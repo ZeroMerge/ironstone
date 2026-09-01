@@ -59,6 +59,7 @@ export interface BlockStyle {
   color?: string;
   fontSize?: number;
   padding?: number;
+  objectFit?: 'cover' | 'contain' | 'none';
 }
 
 export interface PaletteData {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid } from 'lucide-react';
-import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
+import { SidebarSimple, FrameCorners, SquaresFour, PaintBrush, Images as PhImages, TextT, Image as PhImage, Palette as PhPalette, CopySimple, ArrowUp, ArrowDown, Trash, ArrowsOut, TextAlignLeft as PhAlignLeft, TextAlignCenter as PhAlignCenter, TextAlignRight as PhAlignRight, UploadSimple } from '@phosphor-icons/react';
 import {
   getProject,
   listPages,
@@ -68,7 +68,7 @@ export default function Editor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
   const [rightInspectorOpen, setRightInspectorOpen] = useState(true);
-  const [activeInspectorTab, setActiveInspectorTab] = useState<'blocks' | 'assets' | 'styles' | 'presets'>('blocks');
+  const [activeInspectorTab, setActiveInspectorTab] = useState<'design' | 'components' | 'assets'>('design');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [zenMessage, setZenMessage] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
@@ -574,95 +574,380 @@ export default function Editor() {
     </div>
   );
 
+  // Derived: the currently selected block object
+  const selectedBlock = selectedId ? activePage?.blocks.find(b => b.id === selectedId) ?? null : null;
+
+  // Helpers: update a block's style or data fields
+  function patchBlock(patch: Partial<Block['style']>) {
+    if (!selectedBlock || !activePage) return;
+    updateBlock(activePage.id, { ...selectedBlock, style: { ...selectedBlock.style, ...patch } });
+  }
+  function patchBlockData(patch: Record<string, any>) {
+    if (!selectedBlock || !activePage) return;
+    updateBlock(activePage.id, { ...selectedBlock, data: { ...selectedBlock.data, ...patch } });
+  }
+  function patchBlockType(newType: Block['type']) {
+    if (!selectedBlock || !activePage) return;
+    updateBlock(activePage.id, { ...selectedBlock, type: newType });
+  }
+  function duplicateSelected() {
+    if (!selectedBlock || !activePage) return;
+    const spot = findFreeSpot(activePage.blocks, rowsFor(project?.orientation ?? 'landscape'), selectedBlock.w, selectedBlock.h);
+    const dup: Block = { ...selectedBlock, id: uid(), x: spot.x, y: spot.y };
+    persistPage({ ...activePage, blocks: [...activePage.blocks, dup] });
+    setSelectedId(dup.id);
+  }
+  function bringForward() {
+    if (!selectedBlock || !activePage) return;
+    const curZ = selectedBlock.zIndex ?? 0;
+    updateBlock(activePage.id, { ...selectedBlock, zIndex: curZ + 1 });
+  }
+  function sendBackward() {
+    if (!selectedBlock || !activePage) return;
+    const curZ = selectedBlock.zIndex ?? 0;
+    updateBlock(activePage.id, { ...selectedBlock, zIndex: Math.max(0, curZ - 1) });
+  }
+  // Update project styles (global document styles)
+  async function patchStyles(patch: Partial<ProjectStyles>) {
+    if (!project) return;
+    const updated = { ...project, styles: { ...project.styles, ...patch } };
+    setProject(updated);
+    await updateProject(updated);
+  }
+
+  // ── Inspector sub-components ──────────────────────────────────────────────
+
+  // Section label
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-[9px] font-bold tracking-[0.12em] uppercase text-text-muted/60 mb-2">{children}</div>
+  );
+  // Hairline divider
+  const Divider = () => <div className="border-t border-surface-muted my-3" />;
+  // Pill group button
+  const Pill = ({ active, onClick, children, title }: { active: boolean; onClick: () => void; children: React.ReactNode; title?: string }) => (
+    <button
+      onClick={onClick}
+      title={title}
+      className={`px-2.5 py-1 text-[11px] font-semibold rounded-sm transition-colors ${active ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`}
+    >
+      {children}
+    </button>
+  );
+  // Block action row
+  const BlockActions = () => (
+    <div className="flex items-center gap-0.5 mb-3">
+      <button onClick={duplicateSelected} title="Duplicate" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
+        <CopySimple size={13} weight="regular" />
+      </button>
+      <button onClick={bringForward} title="Bring Forward" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
+        <ArrowUp size={13} weight="regular" />
+      </button>
+      <button onClick={sendBackward} title="Send Backward" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
+        <ArrowDown size={13} weight="regular" />
+      </button>
+      <button onClick={() => { if (activePage && selectedId) { persistPage({ ...activePage, blocks: activePage.blocks.filter(b => b.id !== selectedId) }); setSelectedId(null); }}} title="Delete" className="p-1.5 rounded text-text-muted hover:text-danger hover:bg-danger/5 transition-colors ml-auto">
+        <Trash size={13} weight="regular" />
+      </button>
+    </div>
+  );
+
+  // ── Design Tab Content ────────────────────────────────────────────────────
+
+  const designTabContent = (() => {
+    // TEXT BLOCK
+    if (selectedBlock && (selectedBlock.type === 'title' || selectedBlock.type === 'subtitle' || selectedBlock.type === 'text')) {
+      const s = selectedBlock.style ?? {};
+      const sz = s.fontSize ?? (selectedBlock.type === 'title' ? 32 : selectedBlock.type === 'subtitle' ? 20 : 14);
+      return (
+        <div className="px-3 py-3">
+          <BlockActions />
+          <SectionLabel>Hierarchy</SectionLabel>
+          <div className="flex items-center gap-1 mb-3">
+            <Pill active={selectedBlock.type === 'title'} onClick={() => patchBlockType('title')}>Title</Pill>
+            <Pill active={selectedBlock.type === 'subtitle'} onClick={() => patchBlockType('subtitle')}>Subtitle</Pill>
+            <Pill active={selectedBlock.type === 'text'} onClick={() => patchBlockType('text')}>Body</Pill>
+          </div>
+          <Divider />
+          <SectionLabel>Size</SectionLabel>
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={() => patchBlock({ fontSize: Math.max(8, sz - 1) })} className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors">−</button>
+            <span className="text-[12px] font-semibold text-ink tabular-nums w-8 text-center">{sz}</span>
+            <button onClick={() => patchBlock({ fontSize: Math.min(120, sz + 1) })} className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors">+</button>
+          </div>
+          <Divider />
+          <SectionLabel>Weight</SectionLabel>
+          <div className="flex items-center gap-1 mb-3">
+            <Pill active={s.fontWeight === '300'} onClick={() => patchBlock({ fontWeight: '300' })}>Light</Pill>
+            <Pill active={!s.fontWeight || s.fontWeight === '400' || s.fontWeight === 'normal'} onClick={() => patchBlock({ fontWeight: '400' })}>Regular</Pill>
+            <Pill active={s.fontWeight === '700' || s.fontWeight === 'bold'} onClick={() => patchBlock({ fontWeight: '700' })}>Bold</Pill>
+          </div>
+          <Divider />
+          <SectionLabel>Align</SectionLabel>
+          <div className="flex items-center gap-1 mb-3">
+            <button onClick={() => patchBlock({ textAlign: 'left' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'left' || !s.textAlign ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Left"><PhAlignLeft size={13} weight="regular" /></button>
+            <button onClick={() => patchBlock({ textAlign: 'center' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'center' ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Center"><PhAlignCenter size={13} weight="regular" /></button>
+            <button onClick={() => patchBlock({ textAlign: 'right' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'right' ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Right"><PhAlignRight size={13} weight="regular" /></button>
+          </div>
+          <Divider />
+          <SectionLabel>Color</SectionLabel>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-sm border border-surface-muted" style={{ background: s.color ?? '#111110' }} />
+            <input
+              type="color"
+              value={s.color ?? '#111110'}
+              onChange={e => patchBlock({ color: e.target.value })}
+              className="opacity-0 absolute w-5 h-5 cursor-pointer"
+              title="Text color"
+            />
+            <span className="text-[11px] font-mono text-text-muted">{(s.color ?? '#111110').toUpperCase()}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // IMAGE BLOCK
+    if (selectedBlock && selectedBlock.type === 'image') {
+      const s = selectedBlock.style ?? {};
+      const fit = (s as any).objectFit ?? 'cover';
+      const radius = s.borderRadius ?? (project?.styles?.cornerRadius ?? 8);
+      return (
+        <div className="px-3 py-3">
+          <BlockActions />
+          <SectionLabel>Fit</SectionLabel>
+          <div className="flex items-center gap-1 mb-3">
+            <Pill active={fit === 'cover'} onClick={() => patchBlock({ objectFit: 'cover' } as any)}>Fill</Pill>
+            <Pill active={fit === 'contain'} onClick={() => patchBlock({ objectFit: 'contain' } as any)}>Fit</Pill>
+            <Pill active={fit === 'none'} onClick={() => patchBlock({ objectFit: 'none' } as any)}>Crop</Pill>
+          </div>
+          <Divider />
+          <SectionLabel>Corner Radius — {radius}px</SectionLabel>
+          <input
+            type="range"
+            min={0}
+            max={48}
+            value={radius}
+            onChange={e => patchBlock({ borderRadius: Number(e.target.value) })}
+            className="w-full accent-ink mb-3"
+          />
+          <Divider />
+          <button
+            onClick={() => setPickerBlockId(selectedBlock.id)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-ink transition-colors"
+          >
+            <UploadSimple size={13} weight="regular" />
+            Replace Image
+          </button>
+        </div>
+      );
+    }
+
+    // PALETTE BLOCK
+    if (selectedBlock && selectedBlock.type === 'palette') {
+      const colors: string[] = selectedBlock.data?.colors ?? [];
+      const format: string = selectedBlock.data?.format ?? 'hex';
+      return (
+        <div className="px-3 py-3">
+          <BlockActions />
+          <SectionLabel>Swatches</SectionLabel>
+          <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => { if (colors.length > 3) patchBlockData({ colors: colors.slice(0, -1) }); }}
+              className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors"
+            >−</button>
+            <span className="text-[12px] font-semibold text-ink tabular-nums w-8 text-center">{colors.length}</span>
+            <button
+              onClick={() => { if (colors.length < 8) patchBlockData({ colors: [...colors, '#CCCCCC'] }); }}
+              className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors"
+            >+</button>
+          </div>
+          <Divider />
+          <SectionLabel>Format</SectionLabel>
+          <div className="flex items-center gap-1 mb-3">
+            <Pill active={format === 'hex'} onClick={() => patchBlockData({ format: 'hex' })}>HEX</Pill>
+            <Pill active={format === 'rgb'} onClick={() => patchBlockData({ format: 'rgb' })}>RGB</Pill>
+          </div>
+          <Divider />
+          <button
+            onClick={async () => {
+              if (!activePage) return;
+              const pageImageIds = new Set(activePage.blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
+              const pageBlobs = images.filter(img => pageImageIds.has(img.id)).map(i => i.blob);
+              if (pageBlobs.length > 0) {
+                const extracted = await extractPalette(pageBlobs, colors.length || 5);
+                patchBlockData({ colors: extracted });
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-ink transition-colors"
+          >
+            <PhPalette size={13} weight="regular" />
+            Extract from Page
+          </button>
+        </div>
+      );
+    }
+
+    // NOTHING SELECTED → Global Document Styles
+    const styles = project?.styles ?? {};
+    return (
+      <div className="px-3 py-3">
+        <SectionLabel>Canvas Tone</SectionLabel>
+        <div className="flex items-center gap-2 mb-3">
+          {([
+            { key: 'studio', label: 'White', color: '#FFFFFF' },
+            { key: 'linen',  label: 'Warm',  color: '#F5F2EB' },
+            { key: 'obsidian', label: 'Dark', color: '#121212' },
+          ] as const).map(t => (
+            <button
+              key={t.key}
+              onClick={() => patchStyles({ canvasTone: t.key })}
+              title={t.label}
+              className={`flex-1 h-7 rounded-sm border transition-all ${styles.canvasTone === t.key || (!styles.canvasTone && t.key === 'studio') ? 'border-ink ring-1 ring-ink' : 'border-surface-muted hover:border-text-muted'}`}
+              style={{ background: t.color }}
+            />
+          ))}
+        </div>
+
+        <Divider />
+        <SectionLabel>Corner Radius</SectionLabel>
+        <div className="flex items-center gap-1 mb-3">
+          {([0, 4, 8, 16, 24] as const).map(r => (
+            <Pill key={r} active={(styles.cornerRadius ?? 8) === r} onClick={() => patchStyles({ cornerRadius: r })}>
+              {r}
+            </Pill>
+          ))}
+        </div>
+
+        <Divider />
+        <SectionLabel>Grid Gap</SectionLabel>
+        <div className="flex items-center gap-1 mb-3">
+          <Pill active={(styles.gridGap ?? 16) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</Pill>
+          <Pill active={(styles.gridGap ?? 16) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</Pill>
+          <Pill active={(styles.gridGap ?? 16) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</Pill>
+        </div>
+
+        <Divider />
+        <SectionLabel>Margin</SectionLabel>
+        <div className="flex items-center gap-1 mb-3">
+          {([16, 24, 32, 48] as const).map(m => (
+            <Pill key={m} active={(styles.margin ?? 24) === m} onClick={() => patchStyles({ margin: m })}>
+              {m}
+            </Pill>
+          ))}
+        </div>
+
+        <Divider />
+        <SectionLabel>Typography</SectionLabel>
+        <div className="flex items-center gap-1">
+          <Pill active={(styles.fontPairing ?? 'sans') === 'sans'} onClick={() => patchStyles({ fontPairing: 'sans' })}>Sans</Pill>
+          <Pill active={styles.fontPairing === 'serif'} onClick={() => patchStyles({ fontPairing: 'serif' })}>Serif</Pill>
+          <Pill active={styles.fontPairing === 'mono'} onClick={() => patchStyles({ fontPairing: 'mono' })}>Mono</Pill>
+        </div>
+      </div>
+    );
+  })();
+
+  // ── Components Tab ────────────────────────────────────────────────────────
+  const blockTypes = [
+    { type: 'palette',  icon: <PhPalette size={13} weight="regular" />, label: 'Color Palette' },
+    { type: 'title',    icon: <TextT size={13} weight="bold" />,         label: 'Title' },
+    { type: 'subtitle', icon: <TextT size={13} weight="regular" />,      label: 'Subtitle' },
+    { type: 'text',     icon: <TextT size={13} weight="light" />,        label: 'Body Text' },
+    { type: 'image',    icon: <PhImage size={13} weight="regular" />,    label: 'Image Frame' },
+    { type: 'card',     icon: <ArrowsOut size={13} weight="regular" />,  label: 'Bento Card' },
+    { type: 'divider',  icon: <span className="text-[10px] font-mono">—</span>, label: 'Divider' },
+  ];
+
+  const componentsTabContent = (
+    <div className="px-3 py-3 flex flex-col gap-1">
+      {blockTypes.map(bt => (
+        <div
+          key={bt.type}
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: bt.type }))}
+          className="flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-grab active:cursor-grabbing hover:bg-surface-muted transition-colors select-none group"
+        >
+          <div className="w-5 h-5 flex items-center justify-center text-text-muted group-hover:text-ink transition-colors shrink-0">
+            {bt.icon}
+          </div>
+          <span className="text-[12px] font-medium text-text-muted group-hover:text-ink transition-colors">{bt.label}</span>
+          <GripHorizontal size={11} className="ml-auto text-text-muted/40 group-hover:text-text-muted/70 transition-colors" />
+        </div>
+      ))}
+    </div>
+  );
+
+  // ── Assets Tab ────────────────────────────────────────────────────────────
+  const assetsTabContent = (
+    <div className="px-3 py-3 flex flex-col gap-3">
+      {images.length > 0 ? (
+        <div className="grid grid-cols-2 gap-1.5">
+          {images.map(img => (
+            <div
+              key={img.id}
+              draggable
+              onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image', content: img.id }))}
+              className="aspect-square rounded-sm overflow-hidden bg-surface-muted cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-accent/60 transition"
+            >
+              <img src={objectUrlFor(img.id, img.blob)} className="w-full h-full object-cover pointer-events-none" alt="" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[11px] text-text-muted/60 text-center py-8">No assets yet</div>
+      )}
+      <label className="mt-2 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-text-muted cursor-pointer transition-colors">
+        <UploadSimple size={13} weight="regular" />
+        Upload
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={async e => {
+            const files = Array.from(e.target.files ?? []);
+            for (const file of files) {
+              const normalized = await normalizeImage(file);
+              const rec = await putImage({ projectId: id, styleGroupId: null, blob: normalized, source: 'upload' });
+              setImages(prev => [...prev, rec]);
+            }
+          }}
+        />
+      </label>
+    </div>
+  );
+
+  // ── Right Sidebar Assembly ─────────────────────────────────────────────────
+  const inspectorTabs: { id: 'design' | 'components' | 'assets'; icon: React.ReactNode; title: string }[] = [
+    { id: 'design',     icon: <PaintBrush size={14} weight={activeInspectorTab === 'design' ? 'fill' : 'regular'} />,     title: 'Design' },
+    { id: 'components', icon: <SquaresFour size={14} weight={activeInspectorTab === 'components' ? 'fill' : 'regular'} />, title: 'Components' },
+    { id: 'assets',     icon: <PhImages size={14} weight={activeInspectorTab === 'assets' ? 'fill' : 'regular'} />,        title: 'Assets' },
+  ];
+
   const rightSidebarJsx = (
     <div className="flex flex-col h-full w-full">
-      {/* 4-Tab Segmented Header */}
-      <div className="flex items-center p-1.5 bg-surface-muted/50 rounded-lg mx-2 mt-2 mb-3 border-[1.5px] border-surface-muted">
-        {[
-          { id: 'blocks', icon: <LayoutGrid size={14} />, label: 'Blocks' },
-          { id: 'assets', icon: <ImageIcon size={14} />, label: 'Assets' },
-          { id: 'styles', icon: <Palette size={14} />, label: 'Styles' },
-          { id: 'presets', icon: <Columns size={14} />, label: 'Presets' }
-        ].map(tab => (
+      {/* Tab Bar */}
+      <div className="flex items-center border-b border-surface-muted shrink-0">
+        {inspectorTabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveInspectorTab(tab.id as any)}
-            className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-md text-[10px] font-bold transition-all gap-1 ${activeInspectorTab === tab.id ? 'bg-white text-ink shadow-sm ring-[1.5px] ring-surface-muted' : 'text-text-muted hover:text-ink'}`}
-            title={tab.label}
+            onClick={() => setActiveInspectorTab(tab.id)}
+            title={tab.title}
+            className={`flex-1 flex items-center justify-center py-2.5 transition-colors ${
+              activeInspectorTab === tab.id
+                ? 'text-ink border-b-2 border-ink -mb-px'
+                : 'text-text-muted hover:text-ink border-b-2 border-transparent -mb-px'
+            }`}
           >
             {tab.icon}
           </button>
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hover px-2 pb-3">
-        {activeInspectorTab === 'blocks' && (
-          <div className="flex flex-col gap-4">
-            <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase mb-2">Native Blocks</div>
-            <div
-              draggable
-              onDragStart={(e) => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'palette' }))}
-              className="card p-3 shadow-sm bg-surface flex flex-row items-center gap-3 cursor-grab active:cursor-grabbing hover:ring-[1.5px] ring-accent transition-all text-text-muted hover:text-ink select-none"
-            >
-              <div className="flex items-center justify-center w-6 h-6 shrink-0 bg-surface-muted rounded-md text-ink"><Palette size={14} strokeWidth={1.5} /></div>
-              <span className="text-sm font-semibold">Color Palette</span>
-            </div>
-            <div
-              draggable
-              onDragStart={(e) => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'text' }))}
-              className="card p-3 shadow-sm bg-surface flex flex-row items-center gap-3 cursor-grab active:cursor-grabbing hover:ring-[1.5px] ring-accent transition-all text-text-muted hover:text-ink select-none"
-            >
-              <div className="flex items-center justify-center w-6 h-6 shrink-0 bg-surface-muted rounded-md text-ink"><Type size={14} strokeWidth={1.5} /></div>
-              <span className="text-sm font-semibold">Text Heading</span>
-            </div>
-            <div
-              draggable
-              onDragStart={(e) => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'bentoCard' }))}
-              className="card p-3 shadow-sm bg-surface flex flex-row items-center gap-3 cursor-grab active:cursor-grabbing hover:ring-[1.5px] ring-accent transition-all text-text-muted hover:text-ink select-none"
-            >
-              <div className="flex items-center justify-center w-6 h-6 shrink-0 bg-surface-muted rounded-md text-ink"><Layers size={14} strokeWidth={1.5} /></div>
-              <span className="text-sm font-semibold">Bento Frame</span>
-            </div>
-          </div>
-        )}
-
-        {activeInspectorTab === 'assets' && (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase">Project Assets ({images.length})</div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {images.map(img => (
-                <div
-                  key={img.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image', content: img.id }))}
-                  className="aspect-square rounded-md overflow-hidden bg-surface border-[1.5px] border-surface-muted cursor-grab active:cursor-grabbing hover:ring-[1.5px] ring-accent transition"
-                >
-                  <img src={objectUrlFor(img.id, img.blob)} className="w-full h-full object-cover pointer-events-none" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeInspectorTab === 'styles' && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase mb-3">Global Styles</div>
-              <p className="text-xs text-text-muted">Document-wide visual settings (Coming in Phase 24).</p>
-            </div>
-          </div>
-        )}
-
-        {activeInspectorTab === 'presets' && (
-          <div className="flex flex-col gap-6">
-            <div>
-              <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase mb-3">Layout Presets</div>
-              <p className="text-xs text-text-muted">Intelligent auto-layout engines (Coming in Phase 25).</p>
-            </div>
-          </div>
-        )}
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto scrollbar-hover">
+        {activeInspectorTab === 'design'     && designTabContent}
+        {activeInspectorTab === 'components' && componentsTabContent}
+        {activeInspectorTab === 'assets'     && assetsTabContent}
       </div>
     </div>
   );
