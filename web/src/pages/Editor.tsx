@@ -36,16 +36,16 @@ type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 type DragState =
   | { mode: 'move'; blockId: string; startX: number; startY: number; origX: number; origY: number }
   | {
-      mode: 'resize';
-      direction: ResizeDirection;
-      blockId: string;
-      startX: number;
-      startY: number;
-      origX: number;
-      origY: number;
-      origW: number;
-      origH: number;
-    };
+    mode: 'resize';
+    direction: ResizeDirection;
+    blockId: string;
+    startX: number;
+    startY: number;
+    origX: number;
+    origY: number;
+    origW: number;
+    origH: number;
+  };
 
 function findFreeSpot(blocks: Block[], rows: number, w: number, h: number): { x: number; y: number } {
   for (let y = 0; y <= rows - h; y++) {
@@ -66,7 +66,7 @@ export default function Editor() {
   const [activePageId, setActivePageId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
+  const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
   const [rightInspectorOpen, setRightInspectorOpen] = useState(true);
   const [activeInspectorTab, setActiveInspectorTab] = useState<'blocks' | 'assets' | 'styles' | 'presets'>('blocks');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -80,9 +80,9 @@ export default function Editor() {
     function handlePointerMove(e: PointerEvent) {
       if (!isResizing) return;
       e.preventDefault();
-      
+
       const maxW = window.innerWidth * 0.3;
-      
+
       if (isResizing === 'left') {
         const newW = e.clientX;
         if (newW < 120) {
@@ -105,7 +105,7 @@ export default function Editor() {
         }
       }
     }
-    
+
     function handlePointerUp() {
       setIsResizing(null);
       document.body.style.cursor = 'default';
@@ -116,7 +116,7 @@ export default function Editor() {
       window.addEventListener('pointermove', handlePointerMove);
       window.addEventListener('pointerup', handlePointerUp);
     }
-    
+
     return () => {
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', handlePointerUp);
@@ -182,10 +182,10 @@ export default function Editor() {
   const navigateZen = useCallback((direction: 'next' | 'prev') => {
     const idx = pages.findIndex(p => p.id === activePageId);
     if (direction === 'next') {
-      if (idx < pages.length - 1) setActivePageId(pages[idx+1].id);
+      if (idx < pages.length - 1) setActivePageId(pages[idx + 1].id);
       else showZenMessage("End of presentation");
     } else {
-      if (idx > 0) setActivePageId(pages[idx-1].id);
+      if (idx > 0) setActivePageId(pages[idx - 1].id);
       else showZenMessage("Start of presentation");
     }
   }, [pages, activePageId]);
@@ -194,7 +194,7 @@ export default function Editor() {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
         if (viewMode === 'zen') {
-          if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+          if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
           setViewMode('focus');
         } else {
           setRightInspectorOpen(false);
@@ -437,7 +437,7 @@ export default function Editor() {
   async function duplicatePage(pageId: string) {
     const pageToDup = pages.find((p) => p.id === pageId);
     if (!pageToDup) return;
-    
+
     // We need to generate new IDs for the page and all its blocks
     const newPage: Page = {
       ...pageToDup,
@@ -445,7 +445,7 @@ export default function Editor() {
       order: pages.length,
       blocks: pageToDup.blocks.map(b => ({ ...b, id: uid() }))
     };
-    
+
     await putPage(newPage);
     setPages((prev) => [...prev, newPage]);
     setActivePageId(newPage.id);
@@ -505,8 +505,8 @@ export default function Editor() {
 
 
   const pagesListJsx = (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4 px-2 mt-2">
+    <div className="flex flex-col h-full pt-3">
+      <div className="flex items-center justify-between mb-3 px-2 mt-1">
         <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase">
           Pages ({pages.length})
         </div>
@@ -514,8 +514,8 @@ export default function Editor() {
           <Plus size={14} strokeWidth={2} />
         </button>
       </div>
-      
-      <div className="flex-1 flex flex-col gap-3 overflow-y-auto scrollbar-hover px-2 pb-4">
+
+      <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hover px-2 pb-3">
         {pages.map((p, i) => (
           <div
             key={p.id}
@@ -524,7 +524,7 @@ export default function Editor() {
               setSelectedId(null);
               if (viewMode === 'overview') setViewMode('focus');
             }}
-            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-surface shadow-sm ring-[1.5px] ring-accent" : "hover:bg-surface/50"}`}
+            className={`group relative cursor-pointer rounded-sm p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-surface shadow-sm ring-[1.5px] ring-accent" : "hover:bg-surface/50"}`}
           >
             <div className="pointer-events-none rounded overflow-hidden shadow-sm border-[1.5px] border-surface-muted bg-white">
               <GridSurface
@@ -570,14 +570,14 @@ export default function Editor() {
         ))}
       </div>
 
-      
+
     </div>
   );
 
   const rightSidebarJsx = (
     <div className="flex flex-col h-full w-full">
       {/* 4-Tab Segmented Header */}
-      <div className="flex items-center p-1.5 bg-surface-muted/50 rounded-lg mx-4 mt-4 mb-6 border-[1.5px] border-surface-muted">
+      <div className="flex items-center p-1.5 bg-surface-muted/50 rounded-lg mx-2 mt-2 mb-3 border-[1.5px] border-surface-muted">
         {[
           { id: 'blocks', icon: <LayoutGrid size={14} />, label: 'Blocks' },
           { id: 'assets', icon: <ImageIcon size={14} />, label: 'Assets' },
@@ -595,7 +595,7 @@ export default function Editor() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto scrollbar-hover px-4 pb-6">
+      <div className="flex-1 overflow-y-auto scrollbar-hover px-2 pb-3">
         {activeInspectorTab === 'blocks' && (
           <div className="flex flex-col gap-4">
             <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase mb-2">Native Blocks</div>
@@ -633,8 +633,8 @@ export default function Editor() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               {images.map(img => (
-                <div 
-                  key={img.id} 
+                <div
+                  key={img.id}
                   draggable
                   onDragStart={(e) => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image', content: img.id }))}
                   className="aspect-square rounded-md overflow-hidden bg-surface border-[1.5px] border-surface-muted cursor-grab active:cursor-grabbing hover:ring-[1.5px] ring-accent transition"
@@ -673,7 +673,7 @@ export default function Editor() {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pb-12">
           {pages.map((p, i) => (
-            <div 
+            <div
               key={p.id}
               className="flex flex-col gap-2 relative group"
             >
@@ -684,21 +684,21 @@ export default function Editor() {
               {dragOverIndex === pages.length && i === pages.length - 1 && (
                 <div className="absolute -right-5 top-0 bottom-6 w-1 bg-accent rounded-full z-10" />
               )}
-              
-              <div 
+
+              <div
                 className="relative shadow-sm rounded overflow-hidden border border-surface-muted group-hover:border-accent group-hover:shadow-md transition-all bg-white cursor-grab active:cursor-grabbing"
                 onClick={() => { setActivePageId(p.id); setViewMode('focus'); }}
                 draggable
                 onDragStart={(e) => {
                   e.dataTransfer.setData('application/ironstone-page', p.id);
                   e.dataTransfer.effectAllowed = 'move';
-                  
+
                   // Hide the drag image ghost slightly or just let browser handle
                 }}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = 'move';
-                  
+
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   if (x < rect.width / 2) {
@@ -711,10 +711,10 @@ export default function Editor() {
                 onDrop={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  
+
                   const targetIdx = dragOverIndex !== null ? dragOverIndex : i;
                   setDragOverIndex(null);
-                  
+
                   const draggedPageId = e.dataTransfer.getData('application/ironstone-page');
                   if (draggedPageId && draggedPageId !== p.id) {
                     const draggedIdx = pages.findIndex(pg => pg.id === draggedPageId);
@@ -722,7 +722,7 @@ export default function Editor() {
                     const [removed] = newPages.splice(draggedIdx, 1);
                     const adjustedTargetIdx = draggedIdx < targetIdx ? targetIdx - 1 : targetIdx;
                     newPages.splice(adjustedTargetIdx, 0, removed);
-                    
+
                     const updatedPages = newPages.map((pg, idx) => ({ ...pg, order: idx }));
                     setPages(updatedPages);
                     updatedPages.forEach(pg => persistPage(pg));
@@ -736,8 +736,8 @@ export default function Editor() {
                   showGridOverlay={false}
                 >
                   {p.blocks.map((b) => (
-                    <div 
-                      key={b.id} 
+                    <div
+                      key={b.id}
                       style={blockStyle(b, rows)}
                       className="pointer-events-none"
                     >
@@ -746,29 +746,29 @@ export default function Editor() {
                   ))}
                 </GridSurface>
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/5 transition-colors pointer-events-none" />
-                
+
                 {/* Hover actions inside the card like Canva */}
                 <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                  <button onClick={(e) => { e.stopPropagation(); duplicatePage(p.id); }} className="p-1.5 bg-white/90 text-text-muted hover:text-ink shadow-sm rounded border border-surface-muted/50 cursor-pointer" title="Duplicate"><Copy size={12}/></button>
+                  <button onClick={(e) => { e.stopPropagation(); duplicatePage(p.id); }} className="p-1.5 bg-white/90 text-text-muted hover:text-ink shadow-sm rounded border border-surface-muted/50 cursor-pointer" title="Duplicate"><Copy size={12} /></button>
                   {pages.length > 1 && (
-                    <button onClick={(e) => { e.stopPropagation(); removePage(p.id); }} className="p-1.5 bg-white/90 text-text-muted hover:text-danger shadow-sm rounded border border-surface-muted/50 cursor-pointer" title="Delete"><Trash2 size={12}/></button>
+                    <button onClick={(e) => { e.stopPropagation(); removePage(p.id); }} className="p-1.5 bg-white/90 text-text-muted hover:text-danger shadow-sm rounded border border-surface-muted/50 cursor-pointer" title="Delete"><Trash2 size={12} /></button>
                   )}
                 </div>
               </div>
-              
+
               <div className="text-center">
                 <span className="text-xs font-medium text-text-muted">{i + 1}</span>
               </div>
             </div>
           ))}
-          
+
           {/* Add Page Button as a card */}
-          <div 
+          <div
             onClick={addPage}
             className="flex flex-col gap-2 relative group"
           >
             <div className="relative rounded overflow-hidden border border-transparent bg-surface-muted/50 hover:bg-surface-active transition-all cursor-pointer flex items-center justify-center text-text-muted hover:text-ink" style={{ aspectRatio: project.orientation === 'landscape' ? '48/32' : '48/64' }}>
-               <Plus size={24} strokeWidth={2} />
+              <Plus size={24} strokeWidth={2} />
             </div>
           </div>
         </div>
@@ -778,21 +778,21 @@ export default function Editor() {
 
   const canvasJsx = (
     <>
-      <section className="flex-1 overflow-auto" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-        <div className="w-full px-6 md:px-10 lg:px-12 py-6 max-w-6xl mx-auto">
+      <section className="flex-1 overflow-auto scrollbar-hide" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
           {/* Canvas Selection Controls */}
-            <div className="flex items-center justify-end mb-6 h-8">
-              {selectedId && (
-                <button className="btn-secondary !py-1.5" onClick={removeSelected}>
-                  <div className="flex items-center justify-center w-5 h-5 shrink-0">
-                    <Trash2 size={16} strokeWidth={1.5} />
-                  </div>
-                  Remove block
-                </button>
-              )}
-            </div>
+          <div className="flex items-center justify-end mb-6 h-8">
+            {selectedId && (
+              <button className="btn-secondary !py-1.5" onClick={removeSelected}>
+                <div className="flex items-center justify-center w-5 h-5 shrink-0">
+                  <Trash2 size={16} strokeWidth={1.5} />
+                </div>
+                Remove block
+              </button>
+            )}
+          </div>
 
-          
+
 
           {loading ? (
             <div className="flex items-center justify-center h-64 text-sm font-semibold text-text-muted">
@@ -818,15 +818,15 @@ export default function Editor() {
                     const y = Math.max(0, Math.min(rows - 4, Math.floor((e.clientY - rect.top - margin) / cell.h)));
 
                     const id = Date.now().toString();
-                    
+
                     let colors = ['#111110', '#6E6C67', '#A09D96', '#E5E5E3', '#FAFAF9'];
                     const pageImageIds = new Set(activePage.blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
                     const pageBlobs = images.filter(img => pageImageIds.has(img.id)).map(i => i.blob);
-                    
+
                     if (pageBlobs.length > 0) {
                       colors = await extractPalette(pageBlobs, 5);
                     }
-                    
+
                     const newBlock: Block = {
                       id,
                       type: 'palette',
@@ -837,7 +837,7 @@ export default function Editor() {
                     };
                     persistPage({ ...activePage, blocks: [...activePage.blocks, newBlock] });
                   }
-                } catch(err) {
+                } catch (err) {
                   // Not a JSON drag drop
                 }
               }}
@@ -886,11 +886,10 @@ export default function Editor() {
                             setSelectedId(b.id);
                           }
                         }}
-                        className={`${selected ? 'z-20' : 'z-10'} ${
-                          b.type === 'title' || b.type === 'subtitle' || b.type === 'text'
-                            ? 'cursor-text'
-                            : 'cursor-grab active:cursor-grabbing'
-                        }`}
+                        className={`${selected ? 'z-20' : 'z-10'} ${b.type === 'title' || b.type === 'subtitle' || b.type === 'text'
+                          ? 'cursor-text'
+                          : 'cursor-grab active:cursor-grabbing'
+                          }`}
                       >
                         <div className="relative w-full h-full">
                           {/* Active Bounding Ring */}
@@ -907,13 +906,12 @@ export default function Editor() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Escape') commitText(b, (e.target as HTMLTextAreaElement).value);
                               }}
-                              className={`w-full h-full bg-white/90 outline-none resize-none rounded-[var(--block-radius,8px)] p-2 z-30 relative ${
-                                b.type === 'title'
-                                  ? 'font-extrabold tracking-tight text-[5cqw] leading-none'
-                                  : b.type === 'subtitle'
+                              className={`w-full h-full bg-white/90 outline-none resize-none rounded-[var(--block-radius,8px)] p-2 z-30 relative ${b.type === 'title'
+                                ? 'font-extrabold tracking-tight text-[5cqw] leading-none'
+                                : b.type === 'subtitle'
                                   ? 'font-semibold text-[2.4cqw] text-text-muted'
                                   : 'text-[1.8cqw] leading-relaxed'
-                              }`}
+                                }`}
                             />
                           ) : (
                             <EditorBlockContent block={b} onSwatchClick={(idx, e) => { e.stopPropagation(); setPaletteEditState({ block: b, index: idx, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() }); }} />
@@ -1022,18 +1020,18 @@ export default function Editor() {
             </div>
           )}
         </div>
-      {paletteEditState && (
-            <PalettePopover
-              block={paletteEditState.block}
-              initialIndex={paletteEditState.index}
-              anchorRect={paletteEditState.rect}
-              onClose={() => setPaletteEditState(null)}
-              onChange={(newBlock) => {
-                persistPage({ ...activePage!, blocks: activePage!.blocks.map(b => b.id === newBlock.id ? newBlock : b) });
-                setPaletteEditState(prev => prev ? { ...prev, block: newBlock } : null);
-              }}
-            />
-          )}
+        {paletteEditState && (
+          <PalettePopover
+            block={paletteEditState.block}
+            initialIndex={paletteEditState.index}
+            anchorRect={paletteEditState.rect}
+            onClose={() => setPaletteEditState(null)}
+            onChange={(newBlock) => {
+              persistPage({ ...activePage!, blocks: activePage!.blocks.map(b => b.id === newBlock.id ? newBlock : b) });
+              setPaletteEditState(prev => prev ? { ...prev, block: newBlock } : null);
+            }}
+          />
+        )}
       </section>
     </>
   );
@@ -1057,7 +1055,7 @@ export default function Editor() {
         </div>
 
         {/* Center: Panel toggles + Canvas name + View mode toggle */}
-        <div className="flex-1 flex justify-center items-center gap-3 text-xs font-medium text-text-muted">
+        <div className="flex-1 flex justify-center items-center gap-2 text-xs font-medium text-text-muted">
           {/* Left panel toggle */}
           <button
             onClick={() => setLeftOpen(!leftOpen)}
@@ -1123,10 +1121,10 @@ export default function Editor() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden px-2 pb-2 md:px-4 md:pb-4">
+      <div className="flex flex-1 overflow-hidden px-4 pb-4 md:px-4 md:pb-4">
         {/* Left Pages Sidebar */}
-        <aside 
-          className={`shrink-0 bg-surface rounded-xl shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+        <aside
+          className={`shrink-0 bg-surface rounded-md shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
           style={{ width: leftOpen ? leftWidth : 0, opacity: leftOpen ? 1 : 0 }}
         >
           {pagesListJsx}
@@ -1135,17 +1133,17 @@ export default function Editor() {
         {/* Center Canvas */}
         {/* Left Resizer */}
         {leftOpen && (
-          <div 
-            className="w-3 md:w-4 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
+          <div
+            className="w-1.5 md:w-1.5 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
             onPointerDown={(e) => { e.preventDefault(); setIsResizing('left'); }}
           >
             <div className="w-1 h-12 rounded-full bg-surface-muted/0 group-hover:bg-accent/50 transition-colors" />
           </div>
         )}
-        
+
         {/* Center Canvas */}
-        <section className="flex-1 min-w-[400px] overflow-auto scrollbar-hover bg-surface rounded-xl shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-          
+        <section className="flex-1 min-w-[400px] overflow-auto scrollbar-hide bg-surface rounded-md shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+
 
           {viewMode === 'overview' ? overviewJsx : canvasJsx}
         </section>
@@ -1153,17 +1151,17 @@ export default function Editor() {
         {/* Right Inspector */}
         {/* Right Resizer */}
         {rightInspectorOpen && (
-          <div 
-            className="w-3 md:w-4 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
+          <div
+            className="w-1.5 md:w-1.5 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
             onPointerDown={(e) => { e.preventDefault(); setIsResizing('right'); }}
           >
             <div className="w-1 h-12 rounded-full bg-surface-muted/0 group-hover:bg-accent/50 transition-colors" />
           </div>
         )}
-        
+
         {/* Right Inspector */}
-        <aside 
-          className={`shrink-0 bg-surface rounded-xl shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+        <aside
+          className={`shrink-0 bg-surface rounded-md shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
           style={{ width: rightInspectorOpen ? rightWidth : 0, opacity: rightInspectorOpen ? 1 : 0 }}
         >
           <div className="w-full shrink-0 h-full overflow-hidden flex flex-col">
@@ -1184,7 +1182,7 @@ export default function Editor() {
           }}
         />
       )}
-      
+
       {/* Image Picker Modal */}
       {pickerBlockId && activePage && (
         <Modal title="Select Image" onClose={() => setPickerBlockId(null)}>
@@ -1214,7 +1212,7 @@ export default function Editor() {
 
       {/* True Fullscreen Zen / Presentation Overlay */}
       {viewMode === 'zen' && (
-        <div 
+        <div
           className="fixed inset-0 z-[99999] bg-[#0F0F0F] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
           onClick={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -1227,7 +1225,7 @@ export default function Editor() {
               {zenMessage}
             </div>
           )}
-          <div 
+          <div
             className="w-[90vw] h-[90vh] bg-white flex items-center justify-center shadow-2xl transition-all duration-300 ease-out"
             style={{ aspectRatio: project.orientation === 'landscape' ? '48/32' : '48/64' }}
           >
@@ -1244,17 +1242,17 @@ export default function Editor() {
               ))}
             </GridSurface>
           </div>
-          
+
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-[11px] font-bold tracking-widest uppercase flex items-center gap-8">
             <span className="hover:text-white transition-colors">← Prev</span>
             <span className="text-white/90">Slide {pages.findIndex(p => p.id === activePageId) + 1} of {pages.length}</span>
             <span className="hover:text-white transition-colors">Next →</span>
           </div>
-          
-          <button 
+
+          <button
             onClick={(e) => {
               e.stopPropagation();
-              if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+              if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
               setViewMode('focus');
             }}
             className="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors z-50"
