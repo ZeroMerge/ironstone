@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, LayoutGrid, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, ArrowRightToLine, ArrowLeftToLine, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft } from 'lucide-react';
+import { Plus, Maximize2, Columns, LayoutGrid, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, PanelLeft, PanelRight, Layout } from 'lucide-react';
 import {
   getProject,
   listPages,
@@ -514,7 +514,7 @@ export default function Editor() {
         </button>
       </div>
       
-      <div className="flex-1 flex flex-col gap-3 overflow-y-auto px-2 pb-4">
+      <div className="flex-1 flex flex-col gap-3 overflow-y-auto scrollbar-hover px-2 pb-4">
         {pages.map((p, i) => (
           <div
             key={p.id}
@@ -594,7 +594,7 @@ export default function Editor() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-6">
+      <div className="flex-1 overflow-y-auto scrollbar-hover px-4 pb-6">
         {activeInspectorTab === 'blocks' && (
           <div className="flex flex-col gap-4">
             <div className="text-[11px] font-bold text-text-muted/70 tracking-wider uppercase mb-2">Native Blocks</div>
@@ -668,7 +668,7 @@ export default function Editor() {
 
 
   const overviewJsx = (
-    <div className="flex-1 overflow-y-auto p-8 bg-surface-muted/30 h-full">
+    <div className="flex-1 overflow-y-auto scrollbar-hover p-8 bg-surface-muted/30 h-full">
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 pb-12">
           {pages.map((p, i) => (
@@ -1051,6 +1051,14 @@ export default function Editor() {
             <ArrowLeft size={16} strokeWidth={2} />
             <span className="truncate">{project.name}</span>
           </Link>
+          <div className="w-px h-4 bg-surface-muted mx-1" />
+          <button 
+            onClick={() => setLeftOpen(!leftOpen)}
+            className={`p-1.5 rounded-md transition-colors ${leftOpen ? 'text-ink bg-surface shadow-sm border border-surface-muted/50' : 'text-text-muted hover:text-ink hover:bg-surface-active'}`}
+            title="Toggle Left Sidebar"
+          >
+            <PanelLeft size={16} strokeWidth={1.5} fill={leftOpen ? "currentColor" : "none"} />
+          </button>
         </div>
         
         {/* Dynamic Contextual Property Bar (Phase 22) */}
@@ -1058,44 +1066,36 @@ export default function Editor() {
           <span>{selectedId ? "Block Properties (Phase 22)" : "Document Canvas"}</span>
           
           {!selectedId && (
-            <div className="flex items-center bg-surface-muted/50 rounded-full p-0.5 relative">
+            <div className="flex items-center bg-surface-muted/50 rounded-md p-0.5 relative">
               <div 
-                className={`absolute inset-y-0.5 w-[28px] bg-white rounded-full shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[30px]' : 'left-0.5'}`}
+                className={`absolute inset-y-0.5 w-[28px] bg-white rounded-[4px] shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[30px]' : 'left-0.5'}`}
               />
               <button 
                 onClick={() => setViewMode('focus')}
-                className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-300 z-10 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-7 h-7 flex items-center justify-center rounded-[4px] transition-colors duration-300 z-10 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Focus View"
               >
-                <Maximize2 size={12} strokeWidth={2.5} />
+                <Layout size={12} strokeWidth={2} fill={viewMode !== 'overview' ? "currentColor" : "none"} />
               </button>
               <button 
                 onClick={() => setViewMode('overview')}
-                className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-300 z-10 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-7 h-7 flex items-center justify-center rounded-[4px] transition-colors duration-300 z-10 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Grid Overview"
               >
-                <Grid2X2 size={12} strokeWidth={2.5} />
+                <LayoutGrid size={12} strokeWidth={2} fill={viewMode === 'overview' ? "currentColor" : "none"} />
               </button>
             </div>
           )}
         </div>
         
-        <div className="flex items-center justify-end gap-2 w-1/4">
+        <div className="flex items-center justify-end gap-3 w-1/4">
           <button 
-            onClick={() => {
-              setViewMode('zen');
-              document.documentElement.requestFullscreen().catch(err => console.log(err));
-            }} 
-            className="p-2 text-text-muted hover:text-ink hover:bg-surface-active rounded transition flex items-center gap-2" 
-            title="Present Fullscreen"
+            onClick={() => setRightInspectorOpen(!rightInspectorOpen)}
+            className={`p-1.5 rounded-md transition-colors ${rightInspectorOpen ? 'text-ink bg-surface shadow-sm border border-surface-muted/50' : 'text-text-muted hover:text-ink hover:bg-surface-active'}`}
+            title="Toggle Right Inspector"
           >
-            <MonitorPlay size={16} strokeWidth={1.5} />
-            <span className="text-xs font-semibold hidden md:inline">Present</span>
+            <PanelRight size={16} strokeWidth={1.5} fill={rightInspectorOpen ? "currentColor" : "none"} />
           </button>
-          <Link to={`/projects/${id}/export`} className="btn-primary !py-1.5 !px-3 text-xs">
-            Export
-          </Link>
-          
         </div>
       </header>
 
@@ -1121,26 +1121,7 @@ export default function Editor() {
         
         {/* Center Canvas */}
         <section className="flex-1 min-w-[400px] overflow-auto scrollbar-hover bg-surface rounded-xl shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-          {/* Floating Panel Toggle Pill */}
-          {viewMode !== 'zen' && (
-            <div className="absolute bottom-6 left-6 z-40 flex items-center bg-surface shadow-lg border-[1.5px] border-surface-muted rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <button 
-                onClick={() => setLeftOpen(!leftOpen)} 
-                className={`p-2.5 transition-colors ${leftOpen ? 'bg-surface-active text-ink' : 'text-text-muted hover:bg-surface-active hover:text-ink'}`}
-                title="Toggle Pages (Left Panel)"
-              >
-                <ArrowRightToLine size={16} className={leftOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
-              </button>
-              <div className="w-px h-6 bg-surface-muted mx-1" />
-              <button 
-                onClick={() => setRightInspectorOpen(!rightInspectorOpen)} 
-                className={`p-2.5 transition-colors ${rightInspectorOpen ? 'bg-surface-active text-ink' : 'text-text-muted hover:bg-surface-active hover:text-ink'}`}
-                title="Toggle Tools (Right Panel)"
-              >
-                <ArrowLeftToLine size={16} className={rightInspectorOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
-              </button>
-            </div>
-          )}
+          
 
           {viewMode === 'overview' ? overviewJsx : canvasJsx}
         </section>
