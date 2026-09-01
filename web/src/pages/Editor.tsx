@@ -80,7 +80,7 @@ export default function Editor() {
       if (!isResizing) return;
       e.preventDefault();
       
-      const maxW = window.innerWidth * 0.4;
+      const maxW = window.innerWidth * 0.3;
       
       if (isResizing === 'left') {
         const newW = e.clientX;
@@ -1038,7 +1038,7 @@ export default function Editor() {
   );
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-bg overflow-hidden relative">
+    <div className="flex flex-col h-full min-h-screen bg-[#EBEBEB] overflow-hidden relative">
       {/* Mobile Degradation Banner */}
       <div className="lg:hidden bg-accent text-white px-4 py-2 text-xs font-semibold text-center shrink-0 z-50">
         Best experienced on desktop / tablet screen.
@@ -1058,20 +1058,23 @@ export default function Editor() {
           <span>{selectedId ? "Block Properties (Phase 22)" : "Document Canvas"}</span>
           
           {!selectedId && (
-            <div className="flex items-center bg-surface-muted/30 rounded-md p-0.5">
+            <div className="flex items-center bg-surface-muted/50 rounded-full p-0.5 relative">
+              <div 
+                className={`absolute inset-y-0.5 w-[28px] bg-white rounded-full shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[30px]' : 'left-0.5'}`}
+              />
               <button 
                 onClick={() => setViewMode('focus')}
-                className={`p-1.5 rounded-[4px] transition-all ${viewMode !== 'overview' ? 'bg-white shadow-sm text-ink' : 'text-text-muted hover:text-ink hover:bg-surface-active/50'}`}
+                className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-300 z-10 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Focus View"
               >
-                <Maximize2 size={14} strokeWidth={2} />
+                <Maximize2 size={12} strokeWidth={2.5} />
               </button>
               <button 
                 onClick={() => setViewMode('overview')}
-                className={`p-1.5 rounded-[4px] transition-all ${viewMode === 'overview' ? 'bg-white shadow-sm text-ink' : 'text-text-muted hover:text-ink hover:bg-surface-active/50'}`}
+                className={`relative w-7 h-7 flex items-center justify-center rounded-full transition-colors duration-300 z-10 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Grid Overview"
               >
-                <Grid2X2 size={14} strokeWidth={2} />
+                <Grid2X2 size={12} strokeWidth={2.5} />
               </button>
             </div>
           )}
@@ -1117,7 +1120,7 @@ export default function Editor() {
         )}
         
         {/* Center Canvas */}
-        <section className="flex-1 overflow-auto scrollbar-hover bg-surface rounded-xl shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        <section className="flex-1 min-w-[400px] overflow-auto scrollbar-hover bg-surface rounded-xl shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
           {/* Floating Panel Toggle Pill */}
           {viewMode !== 'zen' && (
             <div className="absolute bottom-6 left-6 z-40 flex items-center bg-surface shadow-lg border-[1.5px] border-surface-muted rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
