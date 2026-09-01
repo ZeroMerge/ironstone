@@ -22,12 +22,6 @@ body {
   @apply bg-bg text-ink font-sans antialiased;
 }
 
-/* Thin, quiet scrollbars */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #d6d3cd transparent;
-}
-
 @layer components {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors select-none disabled:opacity-50 disabled:pointer-events-none;
@@ -65,6 +59,13 @@ body {
   scrollbar-width: none;
 }
 
+.scrollbar-hover {
+  scrollbar-width: none;
+}
+.scrollbar-hover:hover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
 .scrollbar-hover::-webkit-scrollbar {
   width: 6px;
   height: 6px;
