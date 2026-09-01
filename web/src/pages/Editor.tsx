@@ -27,7 +27,6 @@ import {
 } from '../lib/grid';
 import GridSurface, { blockStyle } from '../editor/GridSurface';
 import BlockStatic from '../editor/BlockStatic';
-import StudioStyleBar from '../editor/StudioStyleBar';
 import { objectUrlFor, normalizeImage } from '../lib/images';
 import Modal from '../components/Modal';
 
@@ -780,17 +779,8 @@ export default function Editor() {
     <>
       <section className="flex-1 overflow-auto" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
         <div className="w-full px-6 md:px-10 lg:px-12 py-6 max-w-6xl mx-auto">
-          {/* Canvas Header Bar */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3 text-sm text-text-muted">
-              <Link to={`/projects/${id}`} className="inline-flex items-center gap-1 hover:text-ink transition-colors">
-                <div className="flex items-center justify-center w-5 h-5 shrink-0">
-                  <ArrowLeft size={16} strokeWidth={1.5} />
-                </div>
-                {project.name}
-              </Link>
-            </div>
-            <div className="flex items-center gap-2">
+          {/* Canvas Selection Controls */}
+            <div className="flex items-center justify-end mb-6 h-8">
               {selectedId && (
                 <button className="btn-secondary !py-1.5" onClick={removeSelected}>
                   <div className="flex items-center justify-center w-5 h-5 shrink-0">
@@ -799,21 +789,9 @@ export default function Editor() {
                   Remove block
                 </button>
               )}
-              <Link to={`/projects/${id}/export`} className="btn-primary !py-1.5">
-                Export
-              </Link>
             </div>
-          </div>
 
-          {/* Studio Style Bar */}
-          <StudioStyleBar
-            styles={project.styles ?? { cornerRadius: 8, gridGap: 8, margin: 24, fontPairing: 'sans', canvasTone: 'studio' }}
-            onChange={async (newStyles) => {
-              const updated = { ...project, styles: newStyles };
-              setProject(updated);
-              await updateProject(updated);
-            }}
-          />
+          
 
           {loading ? (
             <div className="flex items-center justify-center h-64 text-sm font-semibold text-text-muted">
@@ -1067,7 +1045,7 @@ export default function Editor() {
       </div>
 
       {/* Top Contextual Header */}
-      <header className="h-14 bg-surface flex items-center px-4 md:px-6 justify-between shrink-0 shadow-sm z-20">
+      <header className="h-14 bg-transparent flex items-center px-4 md:px-6 justify-between shrink-0 z-20">
         <div className="flex items-center gap-4 text-sm text-text-muted w-1/4">
           <Link to={`/projects/${id}`} className="inline-flex items-center gap-2 hover:text-ink transition-colors font-semibold">
             <ArrowLeft size={16} strokeWidth={2} />
@@ -1118,10 +1096,10 @@ export default function Editor() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden px-2 pb-2 md:px-4 md:pb-4">
         {/* Left Pages Sidebar */}
         <aside 
-          className={`shrink-0 bg-surface flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+          className={`shrink-0 bg-surface rounded-xl shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
           style={{ width: leftOpen ? leftWidth : 0, opacity: leftOpen ? 1 : 0 }}
         >
           {pagesListJsx}
@@ -1131,13 +1109,15 @@ export default function Editor() {
         {/* Left Resizer */}
         {leftOpen && (
           <div 
-            className="w-1 cursor-col-resize hover:bg-accent/50 active:bg-accent z-20 shrink-0 relative transition-colors -ml-0.5"
+            className="w-3 md:w-4 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
             onPointerDown={(e) => { e.preventDefault(); setIsResizing('left'); }}
-          />
+          >
+            <div className="w-1 h-12 rounded-full bg-surface-muted/0 group-hover:bg-accent/50 transition-colors" />
+          </div>
         )}
         
         {/* Center Canvas */}
-        <section className="flex-1 overflow-auto scrollbar-hover bg-bg relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        <section className="flex-1 overflow-auto scrollbar-hover bg-surface rounded-xl shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
           {/* Floating Panel Toggle Pill */}
           {viewMode !== 'zen' && (
             <div className="absolute bottom-6 left-6 z-40 flex items-center bg-surface shadow-lg border-[1.5px] border-surface-muted rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -1166,14 +1146,16 @@ export default function Editor() {
         {/* Right Resizer */}
         {rightInspectorOpen && (
           <div 
-            className="w-1 cursor-col-resize hover:bg-accent/50 active:bg-accent z-20 shrink-0 relative transition-colors -mr-0.5"
+            className="w-3 md:w-4 cursor-col-resize shrink-0 relative group flex items-center justify-center z-20"
             onPointerDown={(e) => { e.preventDefault(); setIsResizing('right'); }}
-          />
+          >
+            <div className="w-1 h-12 rounded-full bg-surface-muted/0 group-hover:bg-accent/50 transition-colors" />
+          </div>
         )}
         
         {/* Right Inspector */}
         <aside 
-          className={`shrink-0 bg-surface flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+          className={`shrink-0 bg-surface rounded-xl shadow-sm border border-surface-muted/50 flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
           style={{ width: rightInspectorOpen ? rightWidth : 0, opacity: rightInspectorOpen ? 1 : 0 }}
         >
           <div className="w-full shrink-0 h-full overflow-hidden flex flex-col">
