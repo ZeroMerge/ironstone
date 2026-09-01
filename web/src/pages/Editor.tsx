@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid } from 'lucide-react';
-import { SidebarSimple, FrameCorners, SquaresFour, PaintBrush, Images as PhImages, TextT, Image as PhImage, Palette as PhPalette, CopySimple, ArrowUp, ArrowDown, Trash, ArrowsOut, TextAlignLeft as PhAlignLeft, TextAlignCenter as PhAlignCenter, TextAlignRight as PhAlignRight, UploadSimple } from '@phosphor-icons/react';
+import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload } from 'lucide-react';
+import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
   listPages,
@@ -619,34 +619,41 @@ export default function Editor() {
 
   // Section label
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-[9px] font-bold tracking-[0.12em] uppercase text-text-muted/60 mb-2">{children}</div>
+    <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted/60 mb-2.5 px-1">{children}</div>
   );
-  // Hairline divider
-  const Divider = () => <div className="border-t border-surface-muted my-3" />;
-  // Pill group button
-  const Pill = ({ active, onClick, children, title }: { active: boolean; onClick: () => void; children: React.ReactNode; title?: string }) => (
+  
+  // Segmented Control wrapper
+  const SegmentedControl = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg gap-1">
+      {children}
+    </div>
+  );
+  
+  // Segmented Pill
+  const SegmentedPill = ({ active, onClick, children, title }: { active: boolean; onClick: () => void; children: React.ReactNode; title?: string }) => (
     <button
       onClick={onClick}
       title={title}
-      className={`px-2.5 py-1 text-[11px] font-semibold rounded-sm transition-colors ${active ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`}
+      className={`flex-1 flex items-center justify-center py-1.5 text-[11px] font-semibold rounded-md transition-all duration-200 ${active ? 'bg-white text-ink shadow-sm ring-1 ring-black/5' : 'text-text-muted hover:text-ink hover:bg-black/5'}`}
     >
       {children}
     </button>
   );
+
   // Block action row
   const BlockActions = () => (
-    <div className="flex items-center gap-0.5 mb-3">
-      <button onClick={duplicateSelected} title="Duplicate" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
-        <CopySimple size={13} weight="regular" />
+    <div className="flex items-center gap-1 mb-6 bg-surface-muted/30 p-1 rounded-lg">
+      <button onClick={duplicateSelected} title="Duplicate" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-ink hover:bg-black/5 transition-colors">
+        <Copy size={14} strokeWidth={2} />
       </button>
-      <button onClick={bringForward} title="Bring Forward" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
-        <ArrowUp size={13} weight="regular" />
+      <button onClick={bringForward} title="Bring Forward" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-ink hover:bg-black/5 transition-colors">
+        <ArrowUp size={14} strokeWidth={2} />
       </button>
-      <button onClick={sendBackward} title="Send Backward" className="p-1.5 rounded text-text-muted hover:text-ink hover:bg-surface-muted transition-colors">
-        <ArrowDown size={13} weight="regular" />
+      <button onClick={sendBackward} title="Send Backward" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-ink hover:bg-black/5 transition-colors">
+        <ArrowDown size={14} strokeWidth={2} />
       </button>
-      <button onClick={() => { if (activePage && selectedId) { persistPage({ ...activePage, blocks: activePage.blocks.filter(b => b.id !== selectedId) }); setSelectedId(null); }}} title="Delete" className="p-1.5 rounded text-text-muted hover:text-danger hover:bg-danger/5 transition-colors ml-auto">
-        <Trash size={13} weight="regular" />
+      <button onClick={() => { if (activePage && selectedId) { persistPage({ ...activePage, blocks: activePage.blocks.filter(b => b.id !== selectedId) }); setSelectedId(null); }}} title="Delete" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors">
+        <Trash2 size={14} strokeWidth={2} />
       </button>
     </div>
   );
@@ -659,47 +666,55 @@ export default function Editor() {
       const s = selectedBlock.style ?? {};
       const sz = s.fontSize ?? (selectedBlock.type === 'title' ? 32 : selectedBlock.type === 'subtitle' ? 20 : 14);
       return (
-        <div className="px-3 py-3">
+        <div className="px-4 py-4">
           <BlockActions />
-          <SectionLabel>Hierarchy</SectionLabel>
-          <div className="flex items-center gap-1 mb-3">
-            <Pill active={selectedBlock.type === 'title'} onClick={() => patchBlockType('title')}>Title</Pill>
-            <Pill active={selectedBlock.type === 'subtitle'} onClick={() => patchBlockType('subtitle')}>Subtitle</Pill>
-            <Pill active={selectedBlock.type === 'text'} onClick={() => patchBlockType('text')}>Body</Pill>
+          <div className="mb-6">
+            <SectionLabel>Hierarchy</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={selectedBlock.type === 'title'} onClick={() => patchBlockType('title')}>Title</SegmentedPill>
+              <SegmentedPill active={selectedBlock.type === 'subtitle'} onClick={() => patchBlockType('subtitle')}>Subtitle</SegmentedPill>
+              <SegmentedPill active={selectedBlock.type === 'text'} onClick={() => patchBlockType('text')}>Body</SegmentedPill>
+            </SegmentedControl>
           </div>
-          <Divider />
-          <SectionLabel>Size</SectionLabel>
-          <div className="flex items-center gap-2 mb-3">
-            <button onClick={() => patchBlock({ fontSize: Math.max(8, sz - 1) })} className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors">−</button>
-            <span className="text-[12px] font-semibold text-ink tabular-nums w-8 text-center">{sz}</span>
-            <button onClick={() => patchBlock({ fontSize: Math.min(120, sz + 1) })} className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors">+</button>
+          <div className="mb-6">
+            <SectionLabel>Size</SectionLabel>
+            <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg">
+              <button onClick={() => patchBlock({ fontSize: Math.max(8, sz - 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><span className="w-3 h-0.5 bg-current rounded-full"/></button>
+              <span className="flex-1 text-[12px] font-bold text-ink tabular-nums text-center">{sz}</span>
+              <button onClick={() => patchBlock({ fontSize: Math.min(120, sz + 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><Plus size={14} strokeWidth={2.5}/></button>
+            </div>
           </div>
-          <Divider />
-          <SectionLabel>Weight</SectionLabel>
-          <div className="flex items-center gap-1 mb-3">
-            <Pill active={s.fontWeight === '300'} onClick={() => patchBlock({ fontWeight: '300' })}>Light</Pill>
-            <Pill active={!s.fontWeight || s.fontWeight === '400' || s.fontWeight === 'normal'} onClick={() => patchBlock({ fontWeight: '400' })}>Regular</Pill>
-            <Pill active={s.fontWeight === '700' || s.fontWeight === 'bold'} onClick={() => patchBlock({ fontWeight: '700' })}>Bold</Pill>
+          <div className="mb-6">
+            <SectionLabel>Weight</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={s.fontWeight === '300'} onClick={() => patchBlock({ fontWeight: '300' })}>Light</SegmentedPill>
+              <SegmentedPill active={!s.fontWeight || s.fontWeight === '400' || s.fontWeight === 'normal'} onClick={() => patchBlock({ fontWeight: '400' })}>Regular</SegmentedPill>
+              <SegmentedPill active={s.fontWeight === '700' || s.fontWeight === 'bold'} onClick={() => patchBlock({ fontWeight: '700' })}>Bold</SegmentedPill>
+            </SegmentedControl>
           </div>
-          <Divider />
-          <SectionLabel>Align</SectionLabel>
-          <div className="flex items-center gap-1 mb-3">
-            <button onClick={() => patchBlock({ textAlign: 'left' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'left' || !s.textAlign ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Left"><PhAlignLeft size={13} weight="regular" /></button>
-            <button onClick={() => patchBlock({ textAlign: 'center' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'center' ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Center"><PhAlignCenter size={13} weight="regular" /></button>
-            <button onClick={() => patchBlock({ textAlign: 'right' })} className={`p-1.5 rounded-sm transition-colors ${s.textAlign === 'right' ? 'bg-ink text-white' : 'text-text-muted hover:bg-surface-muted hover:text-ink'}`} title="Right"><PhAlignRight size={13} weight="regular" /></button>
+          <div className="mb-6">
+            <SectionLabel>Align</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={s.textAlign === 'left' || !s.textAlign} onClick={() => patchBlock({ textAlign: 'left' })} title="Left"><AlignLeft size={14} strokeWidth={2} /></SegmentedPill>
+              <SegmentedPill active={s.textAlign === 'center'} onClick={() => patchBlock({ textAlign: 'center' })} title="Center"><AlignCenter size={14} strokeWidth={2} /></SegmentedPill>
+              <SegmentedPill active={s.textAlign === 'right'} onClick={() => patchBlock({ textAlign: 'right' })} title="Right"><AlignRight size={14} strokeWidth={2} /></SegmentedPill>
+            </SegmentedControl>
           </div>
-          <Divider />
-          <SectionLabel>Color</SectionLabel>
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-sm border border-surface-muted" style={{ background: s.color ?? '#111110' }} />
-            <input
-              type="color"
-              value={s.color ?? '#111110'}
-              onChange={e => patchBlock({ color: e.target.value })}
-              className="opacity-0 absolute w-5 h-5 cursor-pointer"
-              title="Text color"
-            />
-            <span className="text-[11px] font-mono text-text-muted">{(s.color ?? '#111110').toUpperCase()}</span>
+          <div className="mb-6">
+            <SectionLabel>Color</SectionLabel>
+            <div className="flex items-center gap-3 bg-surface-muted/30 p-2 rounded-lg">
+              <div className="w-6 h-6 rounded-md shadow-sm ring-1 ring-black/10 relative">
+                <div className="absolute inset-0 rounded-md" style={{ background: s.color ?? '#111110' }} />
+                <input
+                  type="color"
+                  value={s.color ?? '#111110'}
+                  onChange={e => patchBlock({ color: e.target.value })}
+                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
+                  title="Text color"
+                />
+              </div>
+              <span className="text-[12px] font-mono font-medium text-text-muted">{(s.color ?? '#111110').toUpperCase()}</span>
+            </div>
           </div>
         </div>
       );
@@ -711,30 +726,34 @@ export default function Editor() {
       const fit = (s as any).objectFit ?? 'cover';
       const radius = s.borderRadius ?? (project?.styles?.cornerRadius ?? 8);
       return (
-        <div className="px-3 py-3">
+        <div className="px-4 py-4">
           <BlockActions />
-          <SectionLabel>Fit</SectionLabel>
-          <div className="flex items-center gap-1 mb-3">
-            <Pill active={fit === 'cover'} onClick={() => patchBlock({ objectFit: 'cover' } as any)}>Fill</Pill>
-            <Pill active={fit === 'contain'} onClick={() => patchBlock({ objectFit: 'contain' } as any)}>Fit</Pill>
-            <Pill active={fit === 'none'} onClick={() => patchBlock({ objectFit: 'none' } as any)}>Crop</Pill>
+          <div className="mb-6">
+            <SectionLabel>Fit</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={fit === 'cover'} onClick={() => patchBlock({ objectFit: 'cover' } as any)}>Fill</SegmentedPill>
+              <SegmentedPill active={fit === 'contain'} onClick={() => patchBlock({ objectFit: 'contain' } as any)}>Fit</SegmentedPill>
+              <SegmentedPill active={fit === 'none'} onClick={() => patchBlock({ objectFit: 'none' } as any)}>Crop</SegmentedPill>
+            </SegmentedControl>
           </div>
-          <Divider />
-          <SectionLabel>Corner Radius — {radius}px</SectionLabel>
-          <input
-            type="range"
-            min={0}
-            max={48}
-            value={radius}
-            onChange={e => patchBlock({ borderRadius: Number(e.target.value) })}
-            className="w-full accent-ink mb-3"
-          />
-          <Divider />
+          <div className="mb-6">
+            <SectionLabel>Corner Radius — {radius}px</SectionLabel>
+            <div className="bg-surface-muted/30 p-3 rounded-lg">
+              <input
+                type="range"
+                min={0}
+                max={48}
+                value={radius}
+                onChange={e => patchBlock({ borderRadius: Number(e.target.value) })}
+                className="w-full accent-ink"
+              />
+            </div>
+          </div>
           <button
             onClick={() => setPickerBlockId(selectedBlock.id)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-ink transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
           >
-            <UploadSimple size={13} weight="regular" />
+            <Upload size={14} strokeWidth={2} />
             Replace Image
           </button>
         </div>
@@ -746,27 +765,29 @@ export default function Editor() {
       const colors: string[] = selectedBlock.data?.colors ?? [];
       const format: string = selectedBlock.data?.format ?? 'hex';
       return (
-        <div className="px-3 py-3">
+        <div className="px-4 py-4">
           <BlockActions />
-          <SectionLabel>Swatches</SectionLabel>
-          <div className="flex items-center gap-2 mb-3">
-            <button
-              onClick={() => { if (colors.length > 3) patchBlockData({ colors: colors.slice(0, -1) }); }}
-              className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors"
-            >−</button>
-            <span className="text-[12px] font-semibold text-ink tabular-nums w-8 text-center">{colors.length}</span>
-            <button
-              onClick={() => { if (colors.length < 8) patchBlockData({ colors: [...colors, '#CCCCCC'] }); }}
-              className="w-6 h-6 flex items-center justify-center rounded-sm text-text-muted hover:bg-surface-muted hover:text-ink text-sm font-bold transition-colors"
-            >+</button>
+          <div className="mb-6">
+            <SectionLabel>Swatches</SectionLabel>
+            <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg">
+              <button
+                onClick={() => { if (colors.length > 3) patchBlockData({ colors: colors.slice(0, -1) }); }}
+                className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"
+              ><span className="w-3 h-0.5 bg-current rounded-full"/></button>
+              <span className="flex-1 text-[12px] font-bold text-ink tabular-nums text-center">{colors.length}</span>
+              <button
+                onClick={() => { if (colors.length < 8) patchBlockData({ colors: [...colors, '#CCCCCC'] }); }}
+                className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"
+              ><Plus size={14} strokeWidth={2.5}/></button>
+            </div>
           </div>
-          <Divider />
-          <SectionLabel>Format</SectionLabel>
-          <div className="flex items-center gap-1 mb-3">
-            <Pill active={format === 'hex'} onClick={() => patchBlockData({ format: 'hex' })}>HEX</Pill>
-            <Pill active={format === 'rgb'} onClick={() => patchBlockData({ format: 'rgb' })}>RGB</Pill>
+          <div className="mb-6">
+            <SectionLabel>Format</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={format === 'hex'} onClick={() => patchBlockData({ format: 'hex' })}>HEX</SegmentedPill>
+              <SegmentedPill active={format === 'rgb'} onClick={() => patchBlockData({ format: 'rgb' })}>RGB</SegmentedPill>
+            </SegmentedControl>
           </div>
-          <Divider />
           <button
             onClick={async () => {
               if (!activePage) return;
@@ -777,9 +798,9 @@ export default function Editor() {
                 patchBlockData({ colors: extracted });
               }
             }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 border border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-ink transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
           >
-            <PhPalette size={13} weight="regular" />
+            <Palette size={14} strokeWidth={2} />
             Extract from Page
           </button>
         </div>
@@ -789,115 +810,169 @@ export default function Editor() {
     // NOTHING SELECTED → Global Document Styles
     const styles = project?.styles ?? {};
     return (
-      <div className="px-3 py-3">
-        <SectionLabel>Canvas Tone</SectionLabel>
-        <div className="flex items-center gap-2 mb-3">
-          {([
-            { key: 'studio', label: 'White', color: '#FFFFFF' },
-            { key: 'linen',  label: 'Warm',  color: '#F5F2EB' },
-            { key: 'obsidian', label: 'Dark', color: '#121212' },
-          ] as const).map(t => (
-            <button
-              key={t.key}
-              onClick={() => patchStyles({ canvasTone: t.key })}
-              title={t.label}
-              className={`flex-1 h-7 rounded-sm border transition-all ${styles.canvasTone === t.key || (!styles.canvasTone && t.key === 'studio') ? 'border-ink ring-1 ring-ink' : 'border-surface-muted hover:border-text-muted'}`}
-              style={{ background: t.color }}
-            />
-          ))}
+      <div className="px-4 py-4">
+        <div className="mb-6">
+          <SectionLabel>Canvas Tone</SectionLabel>
+          <div className="flex items-center gap-2">
+            {([
+              { key: 'studio', label: 'White', color: '#FFFFFF' },
+              { key: 'linen',  label: 'Warm',  color: '#F5F2EB' },
+              { key: 'obsidian', label: 'Dark', color: '#121212' },
+            ] as const).map(t => (
+              <button
+                key={t.key}
+                onClick={() => patchStyles({ canvasTone: t.key })}
+                title={t.label}
+                className={`flex-1 h-10 rounded-lg transition-all ring-offset-2 ring-offset-surface ${styles.canvasTone === t.key || (!styles.canvasTone && t.key === 'studio') ? 'ring-2 ring-ink shadow-sm' : 'ring-1 ring-black/5 hover:ring-black/10'}`}
+                style={{ background: t.color }}
+              />
+            ))}
+          </div>
         </div>
 
-        <Divider />
-        <SectionLabel>Corner Radius</SectionLabel>
-        <div className="flex items-center gap-1 mb-3">
-          {([0, 4, 8, 16, 24] as const).map(r => (
-            <Pill key={r} active={(styles.cornerRadius ?? 8) === r} onClick={() => patchStyles({ cornerRadius: r })}>
-              {r}
-            </Pill>
-          ))}
+        <div className="mb-6">
+          <SectionLabel>Corner Radius</SectionLabel>
+          <SegmentedControl>
+            {([0, 4, 8, 16, 24] as const).map(r => (
+              <SegmentedPill key={r} active={(styles.cornerRadius ?? 8) === r} onClick={() => patchStyles({ cornerRadius: r })}>
+                {r}
+              </SegmentedPill>
+            ))}
+          </SegmentedControl>
         </div>
 
-        <Divider />
-        <SectionLabel>Grid Gap</SectionLabel>
-        <div className="flex items-center gap-1 mb-3">
-          <Pill active={(styles.gridGap ?? 16) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</Pill>
-          <Pill active={(styles.gridGap ?? 16) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</Pill>
-          <Pill active={(styles.gridGap ?? 16) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</Pill>
+        <div className="mb-6">
+          <SectionLabel>Grid Gap</SectionLabel>
+          <SegmentedControl>
+            <SegmentedPill active={(styles.gridGap ?? 16) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 16) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 16) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</SegmentedPill>
+          </SegmentedControl>
         </div>
 
-        <Divider />
-        <SectionLabel>Margin</SectionLabel>
-        <div className="flex items-center gap-1 mb-3">
-          {([16, 24, 32, 48] as const).map(m => (
-            <Pill key={m} active={(styles.margin ?? 24) === m} onClick={() => patchStyles({ margin: m })}>
-              {m}
-            </Pill>
-          ))}
+        <div className="mb-6">
+          <SectionLabel>Margin</SectionLabel>
+          <SegmentedControl>
+            {([16, 24, 32, 48] as const).map(m => (
+              <SegmentedPill key={m} active={(styles.margin ?? 24) === m} onClick={() => patchStyles({ margin: m })}>
+                {m}
+              </SegmentedPill>
+            ))}
+          </SegmentedControl>
         </div>
 
-        <Divider />
-        <SectionLabel>Typography</SectionLabel>
-        <div className="flex items-center gap-1">
-          <Pill active={(styles.fontPairing ?? 'sans') === 'sans'} onClick={() => patchStyles({ fontPairing: 'sans' })}>Sans</Pill>
-          <Pill active={styles.fontPairing === 'serif'} onClick={() => patchStyles({ fontPairing: 'serif' })}>Serif</Pill>
-          <Pill active={styles.fontPairing === 'mono'} onClick={() => patchStyles({ fontPairing: 'mono' })}>Mono</Pill>
+        <div className="mb-6">
+          <SectionLabel>Typography</SectionLabel>
+          <SegmentedControl>
+            <SegmentedPill active={(styles.fontPairing ?? 'sans') === 'sans'} onClick={() => patchStyles({ fontPairing: 'sans' })}>Sans</SegmentedPill>
+            <SegmentedPill active={styles.fontPairing === 'serif'} onClick={() => patchStyles({ fontPairing: 'serif' })}>Serif</SegmentedPill>
+            <SegmentedPill active={styles.fontPairing === 'mono'} onClick={() => patchStyles({ fontPairing: 'mono' })}>Mono</SegmentedPill>
+          </SegmentedControl>
         </div>
       </div>
     );
   })();
 
   // ── Components Tab ────────────────────────────────────────────────────────
-  const blockTypes = [
-    { type: 'palette',  icon: <PhPalette size={13} weight="regular" />, label: 'Color Palette' },
-    { type: 'title',    icon: <TextT size={13} weight="bold" />,         label: 'Title' },
-    { type: 'subtitle', icon: <TextT size={13} weight="regular" />,      label: 'Subtitle' },
-    { type: 'text',     icon: <TextT size={13} weight="light" />,        label: 'Body Text' },
-    { type: 'image',    icon: <PhImage size={13} weight="regular" />,    label: 'Image Frame' },
-    { type: 'card',     icon: <ArrowsOut size={13} weight="regular" />,  label: 'Bento Card' },
-    { type: 'divider',  icon: <span className="text-[10px] font-mono">—</span>, label: 'Divider' },
-  ];
 
   const componentsTabContent = (
-    <div className="px-3 py-3 flex flex-col gap-1">
-      {blockTypes.map(bt => (
-        <div
-          key={bt.type}
-          draggable
-          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: bt.type }))}
-          className="flex items-center gap-3 px-2.5 py-2 rounded-sm cursor-grab active:cursor-grabbing hover:bg-surface-muted transition-colors select-none group"
-        >
-          <div className="w-5 h-5 flex items-center justify-center text-text-muted group-hover:text-ink transition-colors shrink-0">
-            {bt.icon}
-          </div>
-          <span className="text-[12px] font-medium text-text-muted group-hover:text-ink transition-colors">{bt.label}</span>
-          <GripHorizontal size={11} className="ml-auto text-text-muted/40 group-hover:text-text-muted/70 transition-colors" />
+    <div className="px-4 py-4 grid grid-cols-2 gap-3">
+      
+      {/* Title Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'title' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Title</span>
+        <div className="text-2xl font-extrabold text-ink leading-none tracking-tight">Ag</div>
+      </div>
+
+      {/* Subtitle Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'subtitle' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Subtitle</span>
+        <div className="text-sm font-semibold text-text-muted leading-tight mt-auto">Section heading</div>
+      </div>
+
+      {/* Body Text Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'text' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Body Text</span>
+        <div className="text-[10px] text-text-muted/70 leading-relaxed">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</div>
+      </div>
+
+      {/* Image Frame Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Image</span>
+        <div className="h-10 bg-black/5 rounded-md flex items-center justify-center text-text-muted/30 group-hover:text-text-muted/50 transition-colors">
+          <ImageIcon size={18} strokeWidth={2.5} />
         </div>
-      ))}
+      </div>
+
+      {/* Color Palette Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'palette' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Palette</span>
+        <div className="flex gap-1 h-10">
+          <div className="flex-1 bg-ink rounded-md shadow-sm" />
+          <div className="flex-1 bg-surface-muted rounded-md shadow-sm" />
+          <div className="flex-1 bg-text-muted/20 rounded-md shadow-sm" />
+        </div>
+      </div>
+
+      {/* Bento Card Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'card' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Bento Card</span>
+        <div className="flex gap-2 h-12">
+          <div className="flex-1 bg-white rounded-lg shadow-sm border border-black/5" />
+          <div className="w-1/3 flex flex-col gap-2">
+            <div className="flex-1 bg-white rounded-md shadow-sm border border-black/5" />
+            <div className="flex-1 bg-white rounded-md shadow-sm border border-black/5" />
+          </div>
+        </div>
+      </div>
+
+      {/* Divider Snapshot */}
+      <div
+        draggable
+        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'divider' }))}
+        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
+      >
+        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Divider</span>
+        <div className="h-4 flex items-center">
+          <div className="w-full h-px bg-text-muted/30 group-hover:bg-text-muted/50 transition-colors" />
+        </div>
+      </div>
+
     </div>
   );
 
   // ── Assets Tab ────────────────────────────────────────────────────────────
   const assetsTabContent = (
-    <div className="px-3 py-3 flex flex-col gap-3">
-      {images.length > 0 ? (
-        <div className="grid grid-cols-2 gap-1.5">
-          {images.map(img => (
-            <div
-              key={img.id}
-              draggable
-              onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image', content: img.id }))}
-              className="aspect-square rounded-sm overflow-hidden bg-surface-muted cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-accent/60 transition"
-            >
-              <img src={objectUrlFor(img.id, img.blob)} className="w-full h-full object-cover pointer-events-none" alt="" />
-            </div>
-          ))}
+    <div className="px-4 py-4 flex flex-col gap-4">
+      <label className="flex flex-col items-center justify-center gap-2 p-6 bg-surface-muted/30 hover:bg-surface-muted/50 rounded-xl cursor-pointer transition-colors group">
+        <div className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-text-muted group-hover:text-ink transition-colors">
+          <Upload size={16} strokeWidth={2.5} />
         </div>
-      ) : (
-        <div className="text-[11px] text-text-muted/60 text-center py-8">No assets yet</div>
-      )}
-      <label className="mt-2 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-surface-muted rounded-sm text-[11px] font-semibold text-text-muted hover:text-ink hover:border-text-muted cursor-pointer transition-colors">
-        <UploadSimple size={13} weight="regular" />
-        Upload
+        <span className="text-[11px] font-semibold text-text-muted group-hover:text-ink transition-colors">Upload Image</span>
         <input
           type="file"
           accept="image/*"
@@ -913,29 +988,46 @@ export default function Editor() {
           }}
         />
       </label>
+
+      {images.length > 0 ? (
+        <div className="grid grid-cols-2 gap-2">
+          {images.map(img => (
+            <div
+              key={img.id}
+              draggable
+              onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image', content: img.id }))}
+              className="aspect-square rounded-lg overflow-hidden bg-surface-muted cursor-grab active:cursor-grabbing ring-1 ring-black/5 hover:ring-2 hover:ring-ink hover:ring-offset-1 transition-all"
+            >
+              <img src={objectUrlFor(img.id, img.blob)} className="w-full h-full object-cover pointer-events-none" alt="" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[11px] text-text-muted/60 text-center py-8">Project asset library is empty</div>
+      )}
     </div>
   );
 
   // ── Right Sidebar Assembly ─────────────────────────────────────────────────
   const inspectorTabs: { id: 'design' | 'components' | 'assets'; icon: React.ReactNode; title: string }[] = [
-    { id: 'design',     icon: <PaintBrush size={14} weight={activeInspectorTab === 'design' ? 'fill' : 'regular'} />,     title: 'Design' },
-    { id: 'components', icon: <SquaresFour size={14} weight={activeInspectorTab === 'components' ? 'fill' : 'regular'} />, title: 'Components' },
-    { id: 'assets',     icon: <PhImages size={14} weight={activeInspectorTab === 'assets' ? 'fill' : 'regular'} />,        title: 'Assets' },
+    { id: 'design',     icon: <SlidersHorizontal size={16} strokeWidth={activeInspectorTab === 'design' ? 2.5 : 2} />,     title: 'Design' },
+    { id: 'components', icon: <LayoutGrid size={16} strokeWidth={activeInspectorTab === 'components' ? 2.5 : 2} />, title: 'Components' },
+    { id: 'assets',     icon: <ImageIcon size={16} strokeWidth={activeInspectorTab === 'assets' ? 2.5 : 2} />,        title: 'Assets' },
   ];
 
   const rightSidebarJsx = (
     <div className="flex flex-col h-full w-full">
-      {/* Tab Bar */}
-      <div className="flex items-center border-b border-surface-muted shrink-0">
+      {/* Tab Bar (Pill style) */}
+      <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg mx-3 mt-3 mb-1 shrink-0">
         {inspectorTabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveInspectorTab(tab.id)}
             title={tab.title}
-            className={`flex-1 flex items-center justify-center py-2.5 transition-colors ${
+            className={`flex-1 flex items-center justify-center py-2 rounded-md transition-all duration-200 ${
               activeInspectorTab === tab.id
-                ? 'text-ink border-b-2 border-ink -mb-px'
-                : 'text-text-muted hover:text-ink border-b-2 border-transparent -mb-px'
+                ? 'bg-white text-ink shadow-sm ring-1 ring-black/5'
+                : 'text-text-muted hover:text-ink hover:bg-black/5'
             }`}
           >
             {tab.icon}
