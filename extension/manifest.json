@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Ironstone — Save references",
+  "version": "0.1.0",
+  "description": "Save any image from the web into your Ironstone projects or Style Library.",
+  "permissions": ["storage", "activeTab", "scripting", "unlimitedStorage"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_popup": "src/popup.html",
+    "default_title": "Save to Ironstone"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.js"]
+    },
+    {
+      "matches": [
+        "http://localhost:5173/*",
+        "http://127.0.0.1:5173/*",
+        "https://ironstone.app/*"
+      ],
+      "js": ["src/sync.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+

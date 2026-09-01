@@ -1,0 +1,13 @@
+{
+  "name": "ironstone",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Turn Pinterest inspiration into a client-ready moodboard PDF in five minutes.",
+  "scripts": {
+    "dev:web": "npm --prefix web run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build:web": "npm --prefix web run build",
+    "start:server": "npm --prefix server run start",
+    "install:all": "npm --prefix web install && npm --prefix server install"
+  }
+}

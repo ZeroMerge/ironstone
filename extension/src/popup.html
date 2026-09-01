@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      :root {
+        --bg: #fafaf9;
+        --ink: #111110;
+        --surface: #ffffff;
+        --surface-muted: #f1f0ee;
+        --surface-active: #e9e7e3;
+        --text-muted: #6e6c67;
+        --text-faint: #9b988f;
+        --accent: #f5711f;
+        --accent-soft: #fdebdd;
+        --danger: #c2410c;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        width: 340px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Manrope,
+          -apple-system,
+          'Segoe UI',
+          system-ui,
+          sans-serif;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .wrap {
+        padding: 16px;
+      }
+      h1 {
+        font-size: 15px;
+        font-weight: 800;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--text-muted);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .section-label {
+        display: block;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin: 16px 0 6px;
+      }
+      select,
+      button {
+        font: inherit;
+      }
+      select {
+        width: 100%;
+        appearance: none;
+        background: var(--surface-muted);
+        border: none;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-weight: 600;
+        color: var(--ink);
+        outline: none;
+        cursor: pointer;
+      }
+      select:focus {
+        box-shadow: 0 0 0 2px rgba(245, 113, 31, 0.4);
+        background: var(--surface);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        max-height: 216px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+      }
+      .thumb {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--surface-muted);
+        cursor: pointer;
+        padding: 0;
+        border: none;
+      }
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .thumb.selected {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .thumb.selected::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: rgba(245, 113, 31, 0.18);
+      }
+      .actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .btn {
+        border: none;
+        border-radius: 10px;
+        padding: 9px 14px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+      }
+      .btn-primary:not(:disabled):hover {
+        background: #e0641a;
+      }
+      .notice {
+        border-radius: 10px;
+        background: var(--surface-muted);
+        padding: 14px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .notice strong {
+        display: block;
+        color: var(--ink);
+        font-size: 13px;
+        margin-bottom: 2px;
+      }
+      .notice.error {
+        background: var(--accent-soft);
+        color: var(--text-muted);
+      }
+      .notice.error strong {
+        color: var(--danger);
+      }
+      .notice.success {
+        background: var(--accent-soft);
+      }
+      .hidden {
+        display: none;
+      }
+      .pending-note {
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--text-faint);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Save to Ironstone</h1>
+      <p class="sub">Pick an image from this page, choose where it goes.</p>
+
+      <div id="main" class="hidden">
+        <span class="section-label">Image</span>
+        <div id="grid" class="grid"></div>
+
+        <span class="section-label">Save to</span>
+        <select id="target"></select>
+
+        <div class="actions">
+          <button id="save" class="btn btn-primary" disabled>Save image</button>
+        </div>
+        <p id="pending-note" class="pending-note hidden"></p>
+      </div>
+
+      <div id="empty-images" class="notice hidden">
+        <strong>No images found on this page</strong>
+        Try scrolling so the image loads, or save it directly from Ironstone instead.
+      </div>
+
+      <div id="no-targets" class="notice hidden">
+        <strong>Open Ironstone first</strong>
+        The extension needs to see your projects and style groups once before it can save
+        into them. Open the Ironstone app, then try again.
+      </div>
+
+      <div id="error" class="notice error hidden">
+        <strong>Couldn't save this image.</strong>
+        Open Ironstone and try again.
+      </div>
+
+      <div id="saved" class="notice success hidden">
+        <strong>Saved.</strong>
+        It will appear in Ironstone next time the app is open.
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>
