@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, LayoutGrid, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, PanelLeft, PanelRight, Layout } from 'lucide-react';
+import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid } from 'lucide-react';
+import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
   listPages,
@@ -1046,51 +1047,58 @@ export default function Editor() {
 
       {/* Top Contextual Header */}
       <header className="h-14 bg-transparent flex items-center px-4 md:px-6 justify-between shrink-0 z-20">
-        {/* Left: Back + Left panel toggle + Right panel toggle */}
-        <div className="flex items-center gap-1.5 text-sm text-text-muted w-1/4">
-          <Link to={`/projects/${id}`} className="inline-flex items-center gap-2 hover:text-ink transition-colors font-semibold mr-2">
+
+        {/* Left: Back only */}
+        <div className="flex items-center w-1/4 text-sm text-text-muted">
+          <Link to={`/projects/${id}`} className="inline-flex items-center gap-2 hover:text-ink transition-colors font-semibold">
             <ArrowLeft size={16} strokeWidth={2} />
             <span className="truncate">{project.name}</span>
           </Link>
+        </div>
+
+        {/* Center: Panel toggles + Canvas name + View mode toggle */}
+        <div className="flex-1 flex justify-center items-center gap-3 text-xs font-medium text-text-muted">
           {/* Left panel toggle */}
           <button
             onClick={() => setLeftOpen(!leftOpen)}
             className={`p-1 rounded transition-colors ${leftOpen ? 'text-ink bg-ink/10' : 'text-text-muted hover:text-ink hover:bg-ink/5'}`}
             title="Toggle Pages Panel"
           >
-            <PanelLeft size={14} strokeWidth={leftOpen ? 2.5 : 1.75} />
+            <SidebarSimple size={15} weight={leftOpen ? 'fill' : 'regular'} />
           </button>
-          {/* Right panel toggle */}
+          {/* Right panel toggle (mirrored) */}
           <button
             onClick={() => setRightInspectorOpen(!rightInspectorOpen)}
             className={`p-1 rounded transition-colors ${rightInspectorOpen ? 'text-ink bg-ink/10' : 'text-text-muted hover:text-ink hover:bg-ink/5'}`}
             title="Toggle Inspector Panel"
+            style={{ transform: 'scaleX(-1)' }}
           >
-            <PanelRight size={14} strokeWidth={rightInspectorOpen ? 2.5 : 1.75} />
+            <SidebarSimple size={15} weight={rightInspectorOpen ? 'fill' : 'regular'} />
           </button>
-        </div>
 
-        {/* Center: Canvas name + Focus/Overview morphing toggle */}
-        <div className="flex-1 flex justify-center items-center gap-4 text-xs font-medium text-text-muted">
-          <span>{selectedId ? "Block Properties" : "Document Canvas"}</span>
+          <div className="w-px h-4 bg-surface-muted mx-0.5" />
+
+          <span className="text-text-muted">{selectedId ? 'Block Properties' : 'Document Canvas'}</span>
+
           {!selectedId && (
             <div className="flex items-center bg-ink/5 rounded-md p-0.5 relative">
+              {/* Sliding active pill */}
               <div
                 className={`absolute inset-y-0.5 w-[26px] bg-white rounded-[4px] shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[28px]' : 'left-0.5'}`}
               />
               <button
                 onClick={() => setViewMode('focus')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] transition-colors duration-300 z-10 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Focus View"
               >
-                <Layout size={11} strokeWidth={viewMode !== 'overview' ? 2.5 : 1.75} />
+                <FrameCorners size={13} weight={viewMode !== 'overview' ? 'fill' : 'regular'} />
               </button>
               <button
                 onClick={() => setViewMode('overview')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] transition-colors duration-300 z-10 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
                 title="Grid Overview"
               >
-                <LayoutGrid size={11} strokeWidth={viewMode === 'overview' ? 2.5 : 1.75} />
+                <SquaresFour size={13} weight={viewMode === 'overview' ? 'fill' : 'regular'} />
               </button>
             </div>
           )}
