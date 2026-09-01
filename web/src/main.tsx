@@ -15,3 +15,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
+window.addEventListener("error", function (e) {
+  fetch("http://localhost:4100/api/log", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ error: e.message, filename: e.filename, lineno: e.lineno })
+  }).catch(() => {});
+});

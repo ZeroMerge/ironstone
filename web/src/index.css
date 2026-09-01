@@ -55,3 +55,30 @@ body {
   }
 }
 
+
+/* Custom Scrollbars */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hover::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-hover::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-hover::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 10px;
+}
+.scrollbar-hover:hover::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+}
+.scrollbar-hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.3);
+}

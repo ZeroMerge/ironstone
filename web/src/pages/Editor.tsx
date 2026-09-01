@@ -71,6 +71,58 @@ export default function Editor() {
   const [activeInspectorTab, setActiveInspectorTab] = useState<'blocks' | 'assets' | 'styles' | 'presets'>('blocks');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [zenMessage, setZenMessage] = useState<string | null>(null);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [leftWidth, setLeftWidth] = useState(224);
+  const [rightWidth, setRightWidth] = useState(288);
+  const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
+
+  useEffect(() => {
+    function handlePointerMove(e: PointerEvent) {
+      if (!isResizing) return;
+      e.preventDefault();
+      
+      const maxW = window.innerWidth * 0.4;
+      
+      if (isResizing === 'left') {
+        const newW = e.clientX;
+        if (newW < 120) {
+          setLeftOpen(false);
+          setLeftWidth(224);
+          setIsResizing(null);
+        } else {
+          setLeftOpen(true);
+          setLeftWidth(Math.min(newW, maxW));
+        }
+      } else if (isResizing === 'right') {
+        const newW = window.innerWidth - e.clientX;
+        if (newW < 150) {
+          setRightInspectorOpen(false);
+          setRightWidth(288);
+          setIsResizing(null);
+        } else {
+          setRightInspectorOpen(true);
+          setRightWidth(Math.min(newW, maxW));
+        }
+      }
+    }
+    
+    function handlePointerUp() {
+      setIsResizing(null);
+      document.body.style.cursor = 'default';
+    }
+
+    if (isResizing) {
+      document.body.style.cursor = 'col-resize';
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+    }
+    
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      document.body.style.cursor = 'default';
+    };
+  }, [isResizing]);
 
 
   const [pickerBlockId, setPickerBlockId] = useState<string | null>(null);
@@ -78,8 +130,6 @@ export default function Editor() {
   const [paletteBusy, setPaletteBusy] = useState(false);
   const [isInteracting, setIsInteracting] = useState(false);
   const [paletteEditState, setPaletteEditState] = useState<{ block: Block; index: number; rect: DOMRect } | null>(null);
-  const [leftOpen, setLeftOpen] = useState(false);
-  const [rightOpen, setRightOpen] = useState(false);
 
   const surfaceRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -520,15 +570,7 @@ export default function Editor() {
         ))}
       </div>
 
-      <div className="mt-auto pt-4 border-t-[1.5px] border-surface-muted/50 px-2 flex justify-center">
-        <button 
-          onClick={() => setViewMode(viewMode === 'overview' ? 'focus' : 'overview')}
-          className={`flex items-center gap-2 px-3 py-2 w-full justify-center rounded-md text-xs font-semibold transition-all ${viewMode === 'overview' ? 'bg-accent text-white shadow-sm' : 'bg-surface hover:bg-surface-active text-text-muted hover:text-ink border-[1.5px] border-surface-muted'}`}
-        >
-          <Grid2X2 size={14} strokeWidth={2} />
-          {viewMode === 'overview' ? 'Exit Overview' : 'Overview'}
-        </button>
-      </div>
+      
     </div>
   );
 
@@ -1025,7 +1067,7 @@ export default function Editor() {
       </div>
 
       {/* Top Contextual Header */}
-      <header className="h-14 border-b-[1.5px] border-surface-muted bg-surface flex items-center px-4 md:px-6 justify-between shrink-0 shadow-sm z-20">
+      <header className="h-14 bg-surface flex items-center px-4 md:px-6 justify-between shrink-0 shadow-sm z-20">
         <div className="flex items-center gap-4 text-sm text-text-muted w-1/4">
           <Link to={`/projects/${id}`} className="inline-flex items-center gap-2 hover:text-ink transition-colors font-semibold">
             <ArrowLeft size={16} strokeWidth={2} />
@@ -1034,8 +1076,27 @@ export default function Editor() {
         </div>
         
         {/* Dynamic Contextual Property Bar (Phase 22) */}
-        <div className="flex-1 flex justify-center text-xs font-medium text-text-muted">
-          {selectedId ? "Block Properties (Phase 22)" : "Document Canvas"}
+        <div className="flex-1 flex justify-center items-center gap-6 text-xs font-medium text-text-muted">
+          <span>{selectedId ? "Block Properties (Phase 22)" : "Document Canvas"}</span>
+          
+          {!selectedId && (
+            <div className="flex items-center bg-surface-muted/30 rounded-md p-0.5">
+              <button 
+                onClick={() => setViewMode('focus')}
+                className={`p-1.5 rounded-[4px] transition-all ${viewMode !== 'overview' ? 'bg-white shadow-sm text-ink' : 'text-text-muted hover:text-ink hover:bg-surface-active/50'}`}
+                title="Focus View"
+              >
+                <Maximize2 size={14} strokeWidth={2} />
+              </button>
+              <button 
+                onClick={() => setViewMode('overview')}
+                className={`p-1.5 rounded-[4px] transition-all ${viewMode === 'overview' ? 'bg-white shadow-sm text-ink' : 'text-text-muted hover:text-ink hover:bg-surface-active/50'}`}
+                title="Grid Overview"
+              >
+                <Grid2X2 size={14} strokeWidth={2} />
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="flex items-center justify-end gap-2 w-1/4">
@@ -1053,33 +1114,69 @@ export default function Editor() {
           <Link to={`/projects/${id}/export`} className="btn-primary !py-1.5 !px-3 text-xs">
             Export
           </Link>
-          <div className="w-px h-4 bg-surface-muted mx-1" />
-          <button 
-            onClick={() => setRightInspectorOpen(!rightInspectorOpen)} 
-            className={`p-2 rounded transition ${rightInspectorOpen ? 'bg-surface-active text-ink' : 'text-text-muted hover:text-ink hover:bg-surface-active'}`} 
-            title="Toggle Right Inspector"
-          >
-            <ArrowRightToLine size={16} strokeWidth={1.5} className={`transition-transform ${rightInspectorOpen ? 'rotate-0' : 'rotate-180'}`} />
-          </button>
+          
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Pages Sidebar */}
-        <aside className="w-56 shrink-0 bg-surface-muted/60 flex flex-col border-r-[1.5px] border-surface-muted z-10 overflow-hidden">
+        <aside 
+          className={`shrink-0 bg-surface flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+          style={{ width: leftOpen ? leftWidth : 0, opacity: leftOpen ? 1 : 0 }}
+        >
           {pagesListJsx}
         </aside>
 
         {/* Center Canvas */}
-        <section className="flex-1 overflow-auto bg-bg relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+        {/* Left Resizer */}
+        {leftOpen && (
+          <div 
+            className="w-1 cursor-col-resize hover:bg-accent/50 active:bg-accent z-20 shrink-0 relative transition-colors -ml-0.5"
+            onPointerDown={(e) => { e.preventDefault(); setIsResizing('left'); }}
+          />
+        )}
+        
+        {/* Center Canvas */}
+        <section className="flex-1 overflow-auto scrollbar-hover bg-bg relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+          {/* Floating Panel Toggle Pill */}
+          {viewMode !== 'zen' && (
+            <div className="absolute bottom-6 left-6 z-40 flex items-center bg-surface shadow-lg border-[1.5px] border-surface-muted rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <button 
+                onClick={() => setLeftOpen(!leftOpen)} 
+                className={`p-2.5 transition-colors ${leftOpen ? 'bg-surface-active text-ink' : 'text-text-muted hover:bg-surface-active hover:text-ink'}`}
+                title="Toggle Pages (Left Panel)"
+              >
+                <ArrowRightToLine size={16} className={leftOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+              <div className="w-px h-6 bg-surface-muted mx-1" />
+              <button 
+                onClick={() => setRightInspectorOpen(!rightInspectorOpen)} 
+                className={`p-2.5 transition-colors ${rightInspectorOpen ? 'bg-surface-active text-ink' : 'text-text-muted hover:bg-surface-active hover:text-ink'}`}
+                title="Toggle Tools (Right Panel)"
+              >
+                <ArrowLeftToLine size={16} className={rightInspectorOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+              </button>
+            </div>
+          )}
+
           {viewMode === 'overview' ? overviewJsx : canvasJsx}
         </section>
 
         {/* Right Inspector */}
+        {/* Right Resizer */}
+        {rightInspectorOpen && (
+          <div 
+            className="w-1 cursor-col-resize hover:bg-accent/50 active:bg-accent z-20 shrink-0 relative transition-colors -mr-0.5"
+            onPointerDown={(e) => { e.preventDefault(); setIsResizing('right'); }}
+          />
+        )}
+        
+        {/* Right Inspector */}
         <aside 
-          className={`shrink-0 bg-surface flex flex-col border-l-[1.5px] border-surface-muted z-10 transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${rightInspectorOpen ? 'w-72 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'}`}
+          className={`shrink-0 bg-surface flex flex-col z-10 overflow-hidden transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${!isResizing ? '' : '!transition-none'}`}
+          style={{ width: rightInspectorOpen ? rightWidth : 0, opacity: rightInspectorOpen ? 1 : 0 }}
         >
-          <div className="w-72 shrink-0 h-full overflow-hidden flex flex-col">
+          <div className="w-full shrink-0 h-full overflow-hidden flex flex-col">
             {rightSidebarJsx}
           </div>
         </aside>
