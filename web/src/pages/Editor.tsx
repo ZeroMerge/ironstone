@@ -789,21 +789,36 @@ export default function Editor() {
               <SegmentedPill active={format === 'rgb'} onClick={() => patchBlockData({ format: 'rgb' })}>RGB</SegmentedPill>
             </SegmentedControl>
           </div>
-          <button
-            onClick={async () => {
-              if (!activePage) return;
-              const pageImageIds = new Set(activePage.blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
-              const pageBlobs = images.filter(img => pageImageIds.has(img.id)).map(i => i.blob);
-              if (pageBlobs.length > 0) {
-                const extracted = await extractPalette(pageBlobs, colors.length || 5);
-                patchBlockData({ colors: extracted });
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
-          >
-            <Palette size={14} strokeWidth={2} />
-            Extract from Page
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={async () => {
+                if (!activePage) return;
+                const pageImageIds = new Set(activePage.blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
+                const pageBlobs = images.filter(img => pageImageIds.has(img.id)).map(i => i.blob);
+                if (pageBlobs.length > 0) {
+                  const extracted = await extractPalette(pageBlobs, colors.length || 5);
+                  patchBlockData({ colors: extracted });
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
+            >
+              <Palette size={14} strokeWidth={2} />
+              Extract from Page
+            </button>
+            <button
+              onClick={async () => {
+                const allBlobs = images.map(i => i.blob);
+                if (allBlobs.length > 0) {
+                  const extracted = await extractPalette(allBlobs, colors.length || 5);
+                  patchBlockData({ colors: extracted });
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
+            >
+              <Palette size={14} strokeWidth={2} />
+              Extract from All Images
+            </button>
+          </div>
         </div>
       );
     }
@@ -1157,17 +1172,7 @@ export default function Editor() {
     <>
       <section className="flex-1 overflow-auto scrollbar-hide" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
         <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
-          {/* Canvas Selection Controls */}
-          <div className="flex items-center justify-end mb-6 h-8">
-            {selectedId && (
-              <button className="btn-secondary !py-1.5" onClick={removeSelected}>
-                <div className="flex items-center justify-center w-5 h-5 shrink-0">
-                  <Trash2 size={16} strokeWidth={1.5} />
-                </div>
-                Remove block
-              </button>
-            )}
-          </div>
+
 
 
 
@@ -1356,46 +1361,7 @@ export default function Editor() {
             </div>
           )}
 
-          {/* Color Palette Strip */}
-          {viewMode !== 'zen' && (
-            <div className="mt-8">
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs font-bold text-text-muted">Color Palette</p>
-                <button
-                  className="btn-ghost !px-2 !py-1 text-xs"
-                  disabled={paletteBusy}
-                  onClick={() => generatePalette('project')}
-                >
-                  {paletteBusy ? 'Extracting...' : 'From all images'}
-                </button>
-                <button
-                  className="btn-ghost !px-2 !py-1 text-xs"
-                  disabled={paletteBusy}
-                  onClick={() => generatePalette('page')}
-                >
-                  From this page
-                </button>
-              </div>
-              {palette.length > 0 && (
-                <div className="flex items-center gap-2">
-                  {palette.map((hex) => (
-                    <button
-                      key={hex}
-                      onClick={() => addSwatch(hex)}
-                      title={`Add ${hex} to page`}
-                      className="group relative w-12 h-12 rounded-md shadow-sm transition hover:scale-105"
-                      style={{ backgroundColor: hex }}
-                    >
-                      <span className="absolute inset-x-0 -bottom-5 text-center text-[10px] font-semibold text-text-faint opacity-0 group-hover:opacity-100 transition">
-                        {hex}
-                      </span>
-                    </button>
-                  ))}
-                  <p className="ml-2 text-xs text-text-faint">Click a swatch to add it to the page.</p>
-                </div>
-              )}
-            </div>
-          )}
+
         </div>
         {paletteEditState && (
           <PalettePopover
