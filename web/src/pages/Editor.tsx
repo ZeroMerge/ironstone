@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Minimize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, ArrowRight, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Maximize2, Minimize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, ArrowRight, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop, ChevronLeft, ChevronRight, X, Download, Printer, FileText, CheckCircle2, AlertCircle, Loader2, Mail } from 'lucide-react';
 import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
@@ -11,12 +11,16 @@ import {
   getImage,
   putImage,
   updateProject,
+  getSettings,
+  saveEmail,
 } from '../db/repo';
 import { extractPalette } from '../lib/palette';
+import { blobToDataUrl } from '../lib/images';
+import { startExport, getExportStatus } from '../lib/api';
 import PalettePopover from '../editor/PalettePopover';
 import StudioStyleBar from '../editor/StudioStyleBar';
 import CropOverlay from '../editor/CropOverlay';
-import type { Block, ImageRec, Page, Project, ProjectStyles } from '../lib/types';
+import type { Block, ImageRec, Page, Project, ProjectStyles, ExportPayload } from '../lib/types';
 import { applyAutoLayout, type LayoutEngineType, type LayoutScope } from '../lib/layoutEngine';
 import {
   clampBlock,
@@ -107,7 +111,7 @@ export default function Editor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
   const [rightInspectorOpen, setRightInspectorOpen] = useState(true);
-  const [activeInspectorTab, setActiveInspectorTab] = useState<'design' | 'components' | 'assets' | 'layout'>('layout');
+  const [activeInspectorTab, setActiveInspectorTab] = useState<'design' | 'components' | 'assets' | 'layout' | 'export'>('layout');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [zenMessage, setZenMessage] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
@@ -124,6 +128,35 @@ export default function Editor() {
   const [croppingBlockId, setCroppingBlockId] = useState<string | null>(null);
   const [marqueeBox, setMarqueeBox] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const marqueeStartRef = useRef<{ clientX: number; clientY: number } | null>(null);
+
+  // Print PDF & Multi-Format Export Panel State
+  const [exportFormat, setExportFormat] = useState<'a4-landscape' | 'a4-portrait' | 'screen-16-9'>('a4-landscape');
+  const [exportEmail, setExportEmail] = useState('');
+  const [exportPhase, setExportPhase] = useState<
+    | { kind: 'idle' }
+    | { kind: 'submitting'; step: string }
+    | { kind: 'processing'; jobId: string; note?: string }
+    | { kind: 'done'; emailed: boolean; downloadUrl?: string | null }
+    | { kind: 'failed'; message: string }
+  >({ kind: 'idle' });
+  const exportPollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    getSettings().then((s) => {
+      if (s?.savedEmail) setExportEmail(s.savedEmail);
+    }).catch(() => {});
+    return () => {
+      if (exportPollRef.current) window.clearTimeout(exportPollRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (project?.orientation === 'portrait') {
+      setExportFormat('a4-portrait');
+    } else {
+      setExportFormat('a4-landscape');
+    }
+  }, [project?.orientation]);
 
   // 30-Step Undo / Redo History Stack
   interface HistoryStep {
@@ -1902,12 +1935,323 @@ export default function Editor() {
     </div>
   );
 
+  // ── Print PDF & Export Pipeline Functions ─────────────────────────────────
+  async function buildExportPayload(withEmail: boolean): Promise<ExportPayload> {
+    if (!project) throw new Error('Project not loaded');
+    const allPages = await listPages(project.id);
+    const allImages = await listProjectImages(project.id);
+
+    return {
+      project,
+      pages: allPages,
+      images: await Promise.all(
+        allImages.map(async (img) => ({
+          id: img.id,
+          dataUrl: await blobToDataUrl(img.blob),
+        }))
+      ),
+      palette: project.palette ?? [],
+      styles: project.styles,
+      format: exportFormat,
+      email: withEmail && exportEmail.trim() ? exportEmail.trim() : undefined,
+    };
+  }
+
+  async function triggerExport(withEmail: boolean) {
+    if (!project) return;
+    if (withEmail && !/^\S+@\S+\.\S+$/.test(exportEmail.trim())) {
+      setExportPhase({ kind: 'failed', message: 'Please enter a valid email address.' });
+      return;
+    }
+
+    setExportPhase({ kind: 'submitting', step: 'Packaging high-res canvas assets…' });
+
+    try {
+      if (withEmail) {
+        await saveEmail(exportEmail.trim());
+      }
+
+      const payload = await buildExportPayload(withEmail);
+      setExportPhase({ kind: 'submitting', step: 'Connecting to Puppeteer headless renderer…' });
+
+      const { jobId } = await startExport(payload);
+      setExportPhase({ kind: 'processing', jobId, note: 'Renderer starting…' });
+
+      pollExport(jobId, withEmail);
+    } catch (err) {
+      setExportPhase({
+        kind: 'failed',
+        message: err instanceof Error ? err.message : 'Export failed. Please try again.',
+      });
+    }
+  }
+
+  function pollExport(jobId: string, expectsEmail: boolean) {
+    const tick = async () => {
+      try {
+        const status = await getExportStatus(jobId);
+        if (status.status === 'done') {
+          if (!status.emailed && status.downloadUrl) {
+            // Trigger automatic download
+            const a = document.createElement('a');
+            a.href = `http://localhost:4100${status.downloadUrl}`;
+            const safeName = (project?.name || 'moodboard').replace(/[^a-zA-Z0-9_-]/g, '_');
+            a.download = `${safeName}.pdf`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }
+          setExportPhase({ kind: 'done', emailed: status.emailed, downloadUrl: status.downloadUrl });
+          return;
+        }
+        if (status.status === 'failed') {
+          setExportPhase({
+            kind: 'failed',
+            message: status.error || 'PDF generation failed. Please try again.',
+          });
+          return;
+        }
+        setExportPhase({
+          kind: 'processing',
+          jobId,
+          note: status.status === 'queued' ? 'Queued for headless rendering…' : 'Generating 300 DPI vector PDF…',
+        });
+        exportPollRef.current = window.setTimeout(tick, 1500);
+      } catch (err) {
+        setExportPhase({
+          kind: 'failed',
+          message: err instanceof Error ? err.message : 'Connection lost to export server.',
+        });
+      }
+    };
+    exportPollRef.current = window.setTimeout(tick, 1000);
+  }
+
+  const exportTabContent = (
+    <div className="flex flex-col gap-5 p-4 text-ink select-none animate-in fade-in duration-200">
+      {/* Header Info */}
+      <div className="flex flex-col gap-1 pb-3 border-b border-surface-muted">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-ink flex items-center gap-1.5">
+            <Download size={14} className="text-accent" />
+            <span>Print & Export Studio</span>
+          </h3>
+          <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+            300 DPI Vector
+          </span>
+        </div>
+        <p className="text-[11px] text-text-muted">
+          Render pixel-perfect physical print binders or high-res presentation screen decks.
+        </p>
+      </div>
+
+      {/* Multi-Format Canvas Format Selector */}
+      <div className="flex flex-col gap-2">
+        <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+          Export Canvas Format
+        </label>
+        <div className="grid grid-cols-1 gap-2">
+          {/* A4 Landscape */}
+          <button
+            onClick={() => setExportFormat('a4-landscape')}
+            className={`p-3 rounded-lg text-left transition-all flex items-start gap-3 cursor-pointer ${
+              exportFormat === 'a4-landscape'
+                ? 'bg-accent/5 border-[1.5px] border-accent shadow-xs'
+                : 'bg-surface-active/50 hover:bg-surface-active border border-surface-muted/60'
+            }`}
+          >
+            <div className={`p-2 rounded-md ${exportFormat === 'a4-landscape' ? 'bg-accent text-white' : 'bg-surface-muted text-text-muted'}`}>
+              <Printer size={16} strokeWidth={2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink">A4 Landscape</span>
+                <span className="text-[10px] font-mono text-text-muted">297 × 210 mm</span>
+              </div>
+              <p className="text-[10px] text-text-muted mt-0.5">Physical print binders, studio lookbooks, editorial specs</p>
+            </div>
+          </button>
+
+          {/* A4 Portrait */}
+          <button
+            onClick={() => setExportFormat('a4-portrait')}
+            className={`p-3 rounded-lg text-left transition-all flex items-start gap-3 cursor-pointer ${
+              exportFormat === 'a4-portrait'
+                ? 'bg-accent/5 border-[1.5px] border-accent shadow-xs'
+                : 'bg-surface-active/50 hover:bg-surface-active border border-surface-muted/60'
+            }`}
+          >
+            <div className={`p-2 rounded-md ${exportFormat === 'a4-portrait' ? 'bg-accent text-white' : 'bg-surface-muted text-text-muted'}`}>
+              <FileText size={16} strokeWidth={2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink">A4 Portrait</span>
+                <span className="text-[10px] font-mono text-text-muted">210 × 297 mm</span>
+              </div>
+              <p className="text-[10px] text-text-muted mt-0.5">Vertical lookbooks, portfolio sheets, client proposals</p>
+            </div>
+          </button>
+
+          {/* 16:9 Presentation Deck */}
+          <button
+            onClick={() => setExportFormat('screen-16-9')}
+            className={`p-3 rounded-lg text-left transition-all flex items-start gap-3 cursor-pointer ${
+              exportFormat === 'screen-16-9'
+                ? 'bg-accent/5 border-[1.5px] border-accent shadow-xs'
+                : 'bg-surface-active/50 hover:bg-surface-active border border-surface-muted/60'
+            }`}
+          >
+            <div className={`p-2 rounded-md ${exportFormat === 'screen-16-9' ? 'bg-accent text-white' : 'bg-surface-muted text-text-muted'}`}>
+              <MonitorPlay size={16} strokeWidth={2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-ink">16:9 Presentation Deck</span>
+                <span className="text-[10px] font-mono text-text-muted">1920 × 1080 px</span>
+              </div>
+              <p className="text-[10px] text-text-muted mt-0.5">Digital keynote presentations, client screens, video decks</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Document Snapshot Metadata */}
+      <div className="p-3 rounded-lg bg-surface-muted/40 flex flex-col gap-1.5 text-xs">
+        <div className="flex justify-between items-center text-text-muted">
+          <span>Project</span>
+          <span className="font-semibold text-ink truncate max-w-[140px]">{project?.name || 'Moodboard'}</span>
+        </div>
+        <div className="flex justify-between items-center text-text-muted">
+          <span>Total Pages</span>
+          <span className="font-mono font-semibold text-ink">{pages.length} {pages.length === 1 ? 'Page' : 'Pages'}</span>
+        </div>
+        <div className="flex justify-between items-center text-text-muted">
+          <span>Grid System</span>
+          <span className="font-mono text-ink">48×32 Swiss Micro-Grid</span>
+        </div>
+        <div className="flex justify-between items-center text-text-muted">
+          <span>Vector Precision</span>
+          <span className="text-emerald-600 font-semibold flex items-center gap-1">
+            <Check size={12} strokeWidth={3} /> Sharp Headless SVG/HTML
+          </span>
+        </div>
+      </div>
+
+      {/* Action States */}
+      {exportPhase.kind === 'idle' && (
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => triggerExport(false)}
+            className="w-full py-2.5 px-4 rounded-lg bg-ink hover:bg-ink/90 active:scale-[0.99] text-white font-medium text-xs flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+          >
+            <Download size={14} strokeWidth={2.5} />
+            <span>Generate & Download PDF</span>
+          </button>
+
+          {/* Optional Email Delivery Expander */}
+          <div className="pt-2 border-t border-surface-muted/60 flex flex-col gap-2">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-text-muted flex items-center gap-1.5">
+              <Mail size={12} />
+              <span>Or Deliver to Email</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                value={exportEmail}
+                onChange={(e) => setExportEmail(e.target.value)}
+                placeholder="designer@studio.com"
+                className="flex-1 px-3 py-1.5 text-xs bg-surface border border-surface-muted rounded-md focus:border-accent focus:outline-none transition-colors"
+              />
+              <button
+                onClick={() => triggerExport(true)}
+                disabled={!exportEmail.trim()}
+                className="py-1.5 px-3 rounded-md bg-surface-active hover:bg-surface-muted text-ink font-medium text-xs disabled:opacity-40 transition-colors shrink-0 cursor-pointer"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Submitting / Processing State */}
+      {(exportPhase.kind === 'submitting' || exportPhase.kind === 'processing') && (
+        <div className="p-5 rounded-lg bg-accent/5 border border-accent/20 flex flex-col items-center text-center gap-3 animate-in fade-in duration-200">
+          <Loader2 size={24} className="animate-spin text-accent" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold text-ink">
+              {exportPhase.kind === 'submitting' ? 'Preparing Export Payload' : 'Rendering PDF Document'}
+            </span>
+            <span className="text-[11px] text-text-muted">
+              {exportPhase.kind === 'submitting' ? exportPhase.step : (exportPhase.note || 'Processing in headless browser…')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Success State */}
+      {exportPhase.kind === 'done' && (
+        <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center text-center gap-2.5 animate-in fade-in duration-200">
+          <CheckCircle2 size={24} className="text-emerald-600" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold text-emerald-950">
+              {exportPhase.emailed ? 'PDF Emailed Successfully!' : 'PDF Generated Successfully!'}
+            </span>
+            <span className="text-[11px] text-emerald-800">
+              {exportPhase.emailed
+                ? `Dispatched to ${exportEmail}. Check your inbox shortly.`
+                : 'Your high-res PDF has started downloading.'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            {exportPhase.downloadUrl && (
+              <a
+                href={`http://localhost:4100${exportPhase.downloadUrl}`}
+                download={`${(project?.name || 'moodboard').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`}
+                className="py-1.5 px-3 rounded-md bg-emerald-600 text-white font-medium text-xs hover:bg-emerald-700 transition-colors flex items-center gap-1.5"
+              >
+                <Download size={12} strokeWidth={2.5} />
+                <span>Download Again</span>
+              </a>
+            )}
+            <button
+              onClick={() => setExportPhase({ kind: 'idle' })}
+              className="py-1.5 px-3 rounded-md bg-surface border border-surface-muted hover:bg-surface-active text-ink text-xs font-medium transition-colors cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {exportPhase.kind === 'failed' && (
+        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex flex-col items-center text-center gap-2 animate-in fade-in duration-200">
+          <AlertCircle size={24} className="text-red-600" />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs font-bold text-red-950">Export Failed</span>
+            <span className="text-[11px] text-red-800">{exportPhase.message}</span>
+          </div>
+          <button
+            onClick={() => setExportPhase({ kind: 'idle' })}
+            className="mt-1 py-1.5 px-3 rounded-md bg-surface border border-surface-muted hover:bg-surface-active text-ink text-xs font-medium transition-colors cursor-pointer"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
   // ── Right Sidebar Assembly ─────────────────────────────────────────────────
-  const inspectorTabs: { id: 'design' | 'components' | 'assets' | 'layout'; icon: React.ReactNode; title: string }[] = [
+  const inspectorTabs: { id: 'design' | 'components' | 'assets' | 'layout' | 'export'; icon: React.ReactNode; title: string }[] = [
     { id: 'design', icon: <SlidersHorizontal size={16} strokeWidth={activeInspectorTab === 'design' ? 2.5 : 2} />, title: 'Design' },
     { id: 'components', icon: <LayoutGrid size={16} strokeWidth={activeInspectorTab === 'components' ? 2.5 : 2} />, title: 'Components' },
     { id: 'assets', icon: <ImageIcon size={16} strokeWidth={activeInspectorTab === 'assets' ? 2.5 : 2} />, title: 'Assets' },
     { id: 'layout', icon: <Wand2 size={16} strokeWidth={activeInspectorTab === 'layout' ? 2.5 : 2} />, title: 'Auto-Layout' },
+    { id: 'export', icon: <Printer size={16} strokeWidth={activeInspectorTab === 'export' ? 2.5 : 2} />, title: 'Export PDF' },
   ];
 
   const rightSidebarJsx = (
@@ -1935,6 +2279,7 @@ export default function Editor() {
         {activeInspectorTab === 'components' && componentsTabContent}
         {activeInspectorTab === 'assets' && assetsTabContent}
         {activeInspectorTab === 'layout' && layoutTabContent}
+        {activeInspectorTab === 'export' && exportTabContent}
       </div>
     </div>
   );
@@ -2587,9 +2932,19 @@ export default function Editor() {
             <MonitorPlay size={16} strokeWidth={1.5} />
             <span className="text-xs font-semibold hidden md:inline">Present</span>
           </button>
-          <Link to={`/projects/${id}/export`} className="btn-primary !py-1.5 !px-3 text-xs">
-            Export
-          </Link>
+          <button
+            onClick={() => {
+              setActiveInspectorTab('export');
+              setRightInspectorOpen(true);
+            }}
+            className={`btn-primary !py-1.5 !px-3 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              rightInspectorOpen && activeInspectorTab === 'export' ? 'ring-2 ring-accent ring-offset-1' : ''
+            }`}
+            title="Open Print & Export Panel"
+          >
+            <Download size={13} strokeWidth={2.5} />
+            <span>Export</span>
+          </button>
         </div>
       </header>
 

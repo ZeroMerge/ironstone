@@ -10,13 +10,37 @@ import { emailEnabled, sendPdfEmail } from '../email.js';
 
 const blockSchema = z.object({
   id: z.string().max(64),
-  type: z.enum(['title', 'subtitle', 'text', 'image', 'colorSwatch']),
-  x: z.number().int().min(0).max(24),
+  type: z.enum([
+    'title',
+    'subtitle',
+    'text',
+    'caption',
+    'image',
+    'card',
+    'quote',
+    'specSheet',
+    'moodTag',
+    'divider',
+    'palette',
+    'colorSwatch',
+  ]),
+  x: z.number().int().min(0).max(48),
   y: z.number().int().min(0).max(64),
-  w: z.number().int().min(1).max(24),
+  w: z.number().int().min(1).max(48),
   h: z.number().int().min(1).max(64),
-  content: z.string().max(8000),
+  zIndex: z.number().optional(),
+  content: z.string().max(50000).optional().default(''),
+  style: z.record(z.any()).optional(),
+  data: z.record(z.any()).optional(),
 });
+
+const projectStylesSchema = z.object({
+  cornerRadius: z.number().optional(),
+  gridGap: z.number().optional(),
+  margin: z.number().optional(),
+  fontPairing: z.enum(['sans', 'serif', 'mono']).optional(),
+  canvasTone: z.enum(['studio', 'linen', 'slate', 'obsidian']).optional(),
+}).optional();
 
 const payloadSchema = z.object({
   project: z.object({
@@ -24,6 +48,8 @@ const payloadSchema = z.object({
     name: z.string().min(1).max(200),
     createdAt: z.number(),
     orientation: z.enum(['landscape', 'portrait']),
+    palette: z.array(z.string().max(32)).max(50).optional(),
+    styles: projectStylesSchema,
   }),
   pages: z.array(
     z.object({
@@ -36,10 +62,12 @@ const payloadSchema = z.object({
   images: z.array(
     z.object({
       id: z.string().max(64),
-      dataUrl: z.string().startsWith('data:image/').max(15_000_000),
+      dataUrl: z.string().startsWith('data:image/').max(30_000_000),
     }),
   ).max(300),
-  palette: z.array(z.string().max(16)).max(24).optional().default([]),
+  palette: z.array(z.string().max(32)).max(50).optional().default([]),
+  styles: projectStylesSchema,
+  format: z.enum(['a4-landscape', 'a4-portrait', 'screen-16-9']).optional().default('a4-landscape'),
   email: z.string().email().max(320).optional(),
 });
 
@@ -58,7 +86,12 @@ async function processJob(job) {
   job.status = 'processing';
   try {
     const token = signExportToken(job.id);
-    const pdf = await renderPdf({ projectId: job.payload.project.id, jobId: job.id, token });
+    const pdf = await renderPdf({
+      projectId: job.payload.project.id,
+      jobId: job.id,
+      token,
+      format: job.payload.format || 'a4-landscape',
+    });
     if (job.payload.email) {
       if (!emailEnabled()) {
         // No email credential: fall back to download so the user is never stuck.
@@ -106,6 +139,7 @@ exportRouter.post('/export', (req, res) => {
     id,
     status: 'queued',
     payload: parsed.data,
+    projectName: parsed.data.project.name,
     pdf: null,
     emailed: false,
     error: null,
@@ -139,7 +173,8 @@ exportRouter.get('/export/download/:jobId', (req, res) => {
   if (!job || job.status !== 'done' || !job.pdf) {
     return res.status(404).json({ error: 'PDF not available (expired or emailed).' });
   }
-  const name = 'moodboard.pdf';
+  const safeName = (job.projectName || 'moodboard').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const name = `${safeName}.pdf`;
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
   res.send(job.pdf);

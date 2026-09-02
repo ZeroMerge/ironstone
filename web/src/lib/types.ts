@@ -116,4 +116,5 @@ export interface ExportPayload {
   palette: string[];
   email?: string;
   styles?: ProjectStyles;
+  format?: 'a4-landscape' | 'a4-portrait' | 'screen-16-9';
 }
