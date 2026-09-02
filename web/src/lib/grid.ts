@@ -34,6 +34,8 @@ export function getMinFootprint(type: BlockType): { minW: number; minH: number }
       return { minW: 6, minH: 2 };
     case 'text':
       return { minW: 6, minH: 2 };
+    case 'caption':
+      return { minW: 6, minH: 1 };
     case 'quote':
       return { minW: 8, minH: 4 };
     case 'specSheet':

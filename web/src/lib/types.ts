@@ -40,6 +40,7 @@ export type BlockType =
   | 'colorSwatch'
   | 'palette'
   | 'card'
+  | 'caption'
   | 'quote'
   | 'specSheet'
   | 'moodTag'

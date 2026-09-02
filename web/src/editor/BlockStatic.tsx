@@ -20,30 +20,86 @@ export default function BlockStatic({
   };
 
   switch (block.type) {
-    case 'title':
+    case 'title': {
+      const customStyle = {
+        textAlign: block.style?.textAlign || 'left',
+        letterSpacing: block.style?.letterSpacing ?? '-0.03em',
+        fontSize: block.style?.fontSize ? `${block.style.fontSize}px` : undefined,
+        fontWeight: block.style?.fontWeight ?? 800,
+        color: block.style?.color ?? '#111110',
+      };
       return (
-        <div className="w-full h-full flex items-end overflow-hidden" style={{ textAlign: block.style?.textAlign || 'left' }}>
-          <span className="font-extrabold tracking-tight leading-none text-[5cqw]">
-            {block.content || 'Untitled Moodboard'}
+        <div className="w-full h-full flex items-start overflow-hidden" style={customStyle}>
+          <span className="font-extrabold tracking-tight leading-[1.08] text-[5cqw] w-full select-none">
+            {block.content && (block.content.includes('<') && block.content.includes('>')) ? (
+              <span dangerouslySetInnerHTML={{ __html: block.content }} />
+            ) : (
+              block.content || 'Untitled Moodboard'
+            )}
           </span>
         </div>
       );
-    case 'subtitle':
+    }
+    case 'subtitle': {
+      const customStyle = {
+        textAlign: block.style?.textAlign || 'left',
+        letterSpacing: block.style?.letterSpacing,
+        fontSize: block.style?.fontSize ? `${block.style.fontSize}px` : undefined,
+        fontWeight: block.style?.fontWeight ?? 500,
+        color: block.style?.color ?? '#575653',
+      };
       return (
-        <div className="w-full h-full flex items-start overflow-hidden" style={{ textAlign: block.style?.textAlign || 'left' }}>
-          <span className="font-semibold text-[2.4cqw] text-[#6E6C67] leading-snug">
-            {block.content}
+        <div className="w-full h-full flex items-start overflow-hidden" style={customStyle}>
+          <span className="font-medium leading-[1.28] text-[2.4cqw] w-full select-none">
+            {block.content && (block.content.includes('<') && block.content.includes('>')) ? (
+              <span dangerouslySetInnerHTML={{ __html: block.content }} />
+            ) : (
+              block.content
+            )}
           </span>
         </div>
       );
-    case 'text':
+    }
+    case 'text': {
+      const customStyle = {
+        textAlign: block.style?.textAlign || 'left',
+        letterSpacing: block.style?.letterSpacing,
+        fontSize: block.style?.fontSize ? `${block.style.fontSize}px` : undefined,
+        fontWeight: block.style?.fontWeight ?? 400,
+        color: block.style?.color ?? '#2E2D29',
+      };
       return (
-        <div className="w-full h-full overflow-hidden" style={{ textAlign: block.style?.textAlign || 'left' }}>
-          <span className="text-[1.8cqw] leading-relaxed text-[#3d3c39] whitespace-pre-wrap">
-            {block.content}
+        <div className="w-full h-full flex items-start overflow-hidden" style={customStyle}>
+          <span className="text-[1.8cqw] leading-[1.55] whitespace-pre-wrap w-full select-none">
+            {block.content && (block.content.includes('<') && block.content.includes('>')) ? (
+              <span dangerouslySetInnerHTML={{ __html: block.content }} />
+            ) : (
+              block.content
+            )}
           </span>
         </div>
       );
+    }
+    case 'caption': {
+      const customStyle = {
+        textAlign: block.style?.textAlign || 'left',
+        letterSpacing: block.style?.letterSpacing ?? '0.1em',
+        fontSize: block.style?.fontSize ? `${block.style.fontSize}px` : undefined,
+        fontWeight: block.style?.fontWeight ?? 500,
+        color: block.style?.color ?? '#8C8983',
+      };
+      return (
+        <div className="w-full h-full flex items-start overflow-hidden" style={customStyle}>
+          <span className="font-mono uppercase tracking-[0.1em] leading-[1.4] text-[1.2cqw] w-full select-none">
+            {block.content && (block.content.includes('<') && block.content.includes('>')) ? (
+              <span dangerouslySetInnerHTML={{ __html: block.content }} />
+            ) : (
+              block.content
+            )}
+          </span>
+        </div>
+      );
+    }
     case 'image':
       return imageUrl ? (
         <img

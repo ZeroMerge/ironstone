@@ -28,6 +28,7 @@ import {
 } from '../lib/grid';
 import GridSurface, { blockStyle } from '../editor/GridSurface';
 import BlockStatic from '../editor/BlockStatic';
+import InlineTextEditor from '../editor/InlineTextEditor';
 import { objectUrlFor, normalizeImage } from '../lib/images';
 import Modal from '../components/Modal';
 
@@ -408,8 +409,8 @@ export default function Editor() {
   }
 
   function commitText(block: Block, text: string) {
-    updateBlock(activePage!.id, { ...block, content: text });
-    setEditingId(null);
+    if (!activePage) return;
+    updateBlock(activePage.id, { ...block, content: text });
   }
 
   function assignImage(blockId: string, imageId: string) {
@@ -663,9 +664,9 @@ export default function Editor() {
 
   const designTabContent = (() => {
     // TEXT BLOCK
-    if (selectedBlock && (selectedBlock.type === 'title' || selectedBlock.type === 'subtitle' || selectedBlock.type === 'text')) {
+    if (selectedBlock && (selectedBlock.type === 'title' || selectedBlock.type === 'subtitle' || selectedBlock.type === 'text' || selectedBlock.type === 'caption')) {
       const s = selectedBlock.style ?? {};
-      const sz = s.fontSize ?? (selectedBlock.type === 'title' ? 32 : selectedBlock.type === 'subtitle' ? 20 : 14);
+      const sz = s.fontSize ?? (selectedBlock.type === 'title' ? 32 : selectedBlock.type === 'subtitle' ? 20 : selectedBlock.type === 'caption' ? 11 : 14);
       return (
         <div className="px-4 py-4">
           <BlockActions />
@@ -675,6 +676,7 @@ export default function Editor() {
               <SegmentedPill active={selectedBlock.type === 'title'} onClick={() => patchBlockType('title')}>Title</SegmentedPill>
               <SegmentedPill active={selectedBlock.type === 'subtitle'} onClick={() => patchBlockType('subtitle')}>Subtitle</SegmentedPill>
               <SegmentedPill active={selectedBlock.type === 'text'} onClick={() => patchBlockType('text')}>Body</SegmentedPill>
+              <SegmentedPill active={selectedBlock.type === 'caption'} onClick={() => patchBlockType('caption')}>Caption</SegmentedPill>
             </SegmentedControl>
           </div>
           <div className="mb-6">
@@ -1192,33 +1194,54 @@ export default function Editor() {
                 if (!activePage || !surfaceRef.current) return;
                 try {
                   const data = JSON.parse(e.dataTransfer.getData('application/json'));
-                  if (data.type === 'palette') {
-                    const rect = surfaceRef.current.getBoundingClientRect();
-                    const cell = cellSize();
-                    const margin = project.styles?.margin ?? 24;
-                    const x = Math.max(0, Math.min(COLS - 16, Math.floor((e.clientX - rect.left - margin) / cell.w)));
-                    const y = Math.max(0, Math.min(rows - 4, Math.floor((e.clientY - rect.top - margin) / cell.h)));
+                  if (!data || !data.type) return;
+                  const rect = surfaceRef.current.getBoundingClientRect();
+                  const cell = cellSize();
+                  const margin = project.styles?.margin ?? 24;
+                  const id = Date.now().toString();
 
-                    const id = Date.now().toString();
+                  let w = 16;
+                  let h = 4;
+                  let content = '';
+                  let blockData: Record<string, any> | undefined = undefined;
 
+                  if (data.type === 'title') {
+                    w = 24; h = 4; content = 'Untitled Moodboard';
+                  } else if (data.type === 'subtitle') {
+                    w = 20; h = 3; content = 'Visual Direction & Concepts';
+                  } else if (data.type === 'text') {
+                    w = 20; h = 6; content = 'Write project notes, mood references, or client direction...';
+                  } else if (data.type === 'caption') {
+                    w = 16; h = 2; content = 'FIG. 01 — RUNWAY DETAILS / SS26';
+                  } else if (data.type === 'image') {
+                    w = 16; h = 10; content = data.content || '';
+                  } else if (data.type === 'card') {
+                    w = 16; h = 8; content = '';
+                  } else if (data.type === 'divider') {
+                    w = 24; h = 1; content = '';
+                  } else if (data.type === 'palette') {
+                    w = 16; h = 4;
                     let colors = ['#111110', '#6E6C67', '#A09D96', '#E5E5E3', '#FAFAF9'];
                     const pageImageIds = new Set(activePage.blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
                     const pageBlobs = images.filter(img => pageImageIds.has(img.id)).map(i => i.blob);
-
                     if (pageBlobs.length > 0) {
                       colors = await extractPalette(pageBlobs, 5);
                     }
-
-                    const newBlock: Block = {
-                      id,
-                      type: 'palette',
-                      x, y,
-                      w: 16, h: 4,
-                      content: '',
-                      data: { colors, format: 'hex', layoutMode: 'auto' }
-                    };
-                    persistPage({ ...activePage, blocks: [...activePage.blocks, newBlock] });
+                    blockData = { colors, format: 'hex', layoutMode: 'auto' };
                   }
+
+                  const x = Math.max(0, Math.min(COLS - w, Math.floor((e.clientX - rect.left - margin) / cell.w)));
+                  const y = Math.max(0, Math.min(rows - h, Math.floor((e.clientY - rect.top - margin) / cell.h)));
+
+                  const newBlock: Block = {
+                    id,
+                    type: data.type,
+                    x, y, w, h,
+                    content,
+                    data: blockData,
+                  };
+                  persistPage({ ...activePage, blocks: [...activePage.blocks, newBlock] });
+                  setSelectedId(id);
                 } catch (err) {
                   // Not a JSON drag drop
                 }
@@ -1268,7 +1291,7 @@ export default function Editor() {
                             setSelectedId(b.id);
                           }
                         }}
-                        className={`${selected ? 'z-20' : 'z-10'} ${b.type === 'title' || b.type === 'subtitle' || b.type === 'text'
+                        className={`${selected ? 'z-20' : 'z-10'} ${b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption'
                           ? 'cursor-text'
                           : 'cursor-grab active:cursor-grabbing'
                           }`}
@@ -1276,24 +1299,30 @@ export default function Editor() {
                         <div className="relative w-full h-full">
                           {/* Active Bounding Ring */}
                           {selected && (
-                            <div className="absolute inset-0 ring-[1.5px] ring-accent ring-offset-[1.5px] rounded-[var(--block-radius,8px)] pointer-events-none z-20" />
+                            <div className={`absolute inset-0 ring-[1.5px] ${editing ? 'ring-accent/40' : 'ring-accent'} ring-offset-[1.5px] rounded-[var(--block-radius,8px)] pointer-events-none z-20 transition-all`} />
                           )}
 
                           {/* Block Content */}
-                          {editing ? (
-                            <textarea
-                              autoFocus
-                              defaultValue={b.content}
-                              onBlur={(e) => commitText(b, e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Escape') commitText(b, (e.target as HTMLTextAreaElement).value);
+                          {b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption' ? (
+                            <InlineTextEditor
+                              block={b}
+                              isEditing={editing}
+                              onCommit={(newContent) => commitText(b, newContent)}
+                              onTypeChange={(newType) => {
+                                if (!activePage) return;
+                                updateBlock(activePage.id, { ...b, type: newType });
                               }}
-                              className={`w-full h-full bg-white/90 outline-none resize-none rounded-[var(--block-radius,8px)] p-2 z-30 relative ${b.type === 'title'
-                                ? 'font-extrabold tracking-tight text-[5cqw] leading-none'
-                                : b.type === 'subtitle'
-                                  ? 'font-semibold text-[2.4cqw] text-text-muted'
-                                  : 'text-[1.8cqw] leading-relaxed'
-                                }`}
+                              onStyleChange={(stylePatch) => {
+                                if (!activePage) return;
+                                updateBlock(activePage.id, { ...b, style: { ...b.style, ...stylePatch } });
+                              }}
+                              onStartEditing={() => {
+                                setEditingId(b.id);
+                                setSelectedId(b.id);
+                              }}
+                              onStopEditing={() => {
+                                setEditingId(null);
+                              }}
                             />
                           ) : (
                             <EditorBlockContent block={b} onSwatchClick={(idx, e) => { e.stopPropagation(); setPaletteEditState({ block: b, index: idx, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() }); }} />
