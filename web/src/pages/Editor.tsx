@@ -229,6 +229,39 @@ export default function Editor() {
         setSelectedId(null);
         setEditingId(null);
       }
+      // Figma Pattern: Enter key activates text editing on selected text block
+      if (e.key === 'Enter') {
+        if (editingId) return;
+        if (!selectedId || !activePageId) return;
+        const pg = pages.find((p) => p.id === activePageId);
+        const b = pg?.blocks.find((x) => x.id === selectedId);
+        if (b && (b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption')) {
+          e.preventDefault();
+          setEditingId(b.id);
+        }
+      }
+      // Figma Pattern: Arrow keys nudge selected block on grid
+      if (e.key.startsWith('Arrow')) {
+        if (editingId) return;
+        if (!selectedId || !activePageId) return;
+        const pg = pages.find((p) => p.id === activePageId);
+        const b = pg?.blocks.find((x) => x.id === selectedId);
+        if (!b) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 4 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === 'ArrowUp') dy = -step;
+        if (e.key === 'ArrowDown') dy = step;
+        if (e.key === 'ArrowLeft') dx = -step;
+        if (e.key === 'ArrowRight') dx = step;
+        const next = clampBlock({ ...b, x: b.x + dx, y: b.y + dy }, rows);
+        if (next.x !== b.x || next.y !== b.y) {
+          const updated = { ...pg!, blocks: pg!.blocks.map((x) => (x.id === b.id ? next : x)) };
+          setPages((prev) => prev.map((p) => (p.id === activePageId ? updated : p)));
+          void putPage(updated);
+        }
+      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -293,13 +326,6 @@ export default function Editor() {
   function onBlockPointerDown(e: React.PointerEvent, block: Block) {
     if (editingId === block.id) return;
     if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
-
-    const isTextBlock = block.type === 'title' || block.type === 'subtitle' || block.type === 'text' || block.type === 'caption';
-    // If text block is already selected, let click through directly to enter editing mode
-    if (isTextBlock && selectedId === block.id) {
-      setEditingId(block.id);
-      return;
-    }
 
     e.preventDefault();
     setSelectedId(block.id);

@@ -239,9 +239,6 @@ export default function InlineTextEditor({
   return (
     <div
       className="w-full h-full flex items-start relative overflow-hidden"
-      onClick={() => {
-        if (!isEditing && isSelected) onStartEditing();
-      }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         if (!isEditing) onStartEditing();
@@ -267,7 +264,9 @@ export default function InlineTextEditor({
         onKeyDown={handleKeyDown}
         onMouseUp={updateSelectionToolbar}
         onKeyUp={updateSelectionToolbar}
-        className={`w-full h-full bg-transparent p-0 m-0 outline-none border-none cursor-text ${typographyClass}`}
+        className={`w-full h-full bg-transparent p-0 m-0 outline-none border-none ${
+          isEditing ? 'cursor-text pointer-events-auto select-text' : 'pointer-events-none select-none'
+        } ${typographyClass}`}
         style={customStyle}
       />
 
