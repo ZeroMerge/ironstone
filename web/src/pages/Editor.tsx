@@ -862,9 +862,10 @@ export default function Editor() {
         <div className="mb-6">
           <SectionLabel>Grid Gap</SectionLabel>
           <SegmentedControl>
-            <SegmentedPill active={(styles.gridGap ?? 16) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</SegmentedPill>
-            <SegmentedPill active={(styles.gridGap ?? 16) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</SegmentedPill>
-            <SegmentedPill active={(styles.gridGap ?? 16) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 0) === 0} onClick={() => patchStyles({ gridGap: 0 })}>None</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 0) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 0) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 0) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</SegmentedPill>
           </SegmentedControl>
         </div>
 
@@ -1195,9 +1196,9 @@ export default function Editor() {
                 try {
                   const data = JSON.parse(e.dataTransfer.getData('application/json'));
                   if (!data || !data.type) return;
-                  const rect = surfaceRef.current.getBoundingClientRect();
+                  const gridInner = surfaceRef.current.querySelector<HTMLElement>('[data-grid-inner]') || surfaceRef.current;
+                  const rect = gridInner.getBoundingClientRect();
                   const cell = cellSize();
-                  const margin = project.styles?.margin ?? 24;
                   const id = Date.now().toString();
 
                   let w = 16;
@@ -1230,8 +1231,8 @@ export default function Editor() {
                     blockData = { colors, format: 'hex', layoutMode: 'auto' };
                   }
 
-                  const x = Math.max(0, Math.min(COLS - w, Math.floor((e.clientX - rect.left - margin) / cell.w)));
-                  const y = Math.max(0, Math.min(rows - h, Math.floor((e.clientY - rect.top - margin) / cell.h)));
+                  const x = Math.max(0, Math.min(COLS - w, Math.floor((e.clientX - rect.left) / cell.w)));
+                  const y = Math.max(0, Math.min(rows - h, Math.floor((e.clientY - rect.top) / cell.h)));
 
                   const newBlock: Block = {
                     id,
@@ -1291,7 +1292,7 @@ export default function Editor() {
                             setSelectedId(b.id);
                           }
                         }}
-                        className={`${selected ? 'z-20' : 'z-10'} ${b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption'
+                        className={`${selected ? 'z-20' : 'z-10'} ${editing
                           ? 'cursor-text'
                           : 'cursor-grab active:cursor-grabbing'
                           }`}
@@ -1307,6 +1308,7 @@ export default function Editor() {
                             <InlineTextEditor
                               block={b}
                               isEditing={editing}
+                              isSelected={selected}
                               onCommit={(newContent) => commitText(b, newContent)}
                               onTypeChange={(newType) => {
                                 if (!activePage) return;

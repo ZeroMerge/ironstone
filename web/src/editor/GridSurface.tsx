@@ -21,7 +21,7 @@ export default function GridSurface({
 }: GridSurfaceProps) {
   const rows = rowsFor(orientation);
   const margin = styles?.margin ?? 24;
-  const gap = styles?.gridGap ?? 8;
+  const gap = styles?.gridGap ?? 0;
   const radius = styles?.cornerRadius ?? 8;
   const tone = styles?.canvasTone ?? 'studio';
   const font = styles?.fontPairing ?? 'sans';
@@ -108,7 +108,7 @@ export function blockStyle(
     width: `${(b.w / COLS) * 100}%`,
     height: `${(b.h / rows) * 100}%`,
     zIndex: b.zIndex ?? 1,
-    padding: 'calc(var(--grid-gap, 8px) / 2)',
+    padding: 'calc(var(--grid-gap, 0px) / 2)',
     boxSizing: 'border-box',
   };
 }

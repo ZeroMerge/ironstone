@@ -1,10 +1,11 @@
-﻿import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Block, BlockType, BlockStyle } from '../lib/types';
 import TextSelectionToolbar from './TextSelectionToolbar';
 
 interface InlineTextEditorProps {
   block: Block;
   isEditing: boolean;
+  isSelected?: boolean;
   onCommit: (content: string) => void;
   onTypeChange: (newType: BlockType) => void;
   onStyleChange: (stylePatch: Partial<BlockStyle>) => void;
@@ -22,6 +23,7 @@ const PLACEHOLDERS: Record<string, string> = {
 export default function InlineTextEditor({
   block,
   isEditing,
+  isSelected = false,
   onCommit,
   onTypeChange,
   onStyleChange,
@@ -194,6 +196,10 @@ export default function InlineTextEditor({
     <div
       className="w-full h-full flex items-start relative overflow-hidden"
       onClick={() => {
+        if (!isEditing && isSelected) onStartEditing();
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
         if (!isEditing) onStartEditing();
       }}
     >
