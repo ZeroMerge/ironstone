@@ -872,9 +872,9 @@ export default function Editor() {
         <div className="mb-6">
           <SectionLabel>Margin</SectionLabel>
           <SegmentedControl>
-            {([16, 24, 32, 48] as const).map(m => (
-              <SegmentedPill key={m} active={(styles.margin ?? 24) === m} onClick={() => patchStyles({ margin: m })}>
-                {m}
+            {([0, 16, 24, 32, 48] as const).map(m => (
+              <SegmentedPill key={m} active={(styles.margin ?? 0) === m} onClick={() => patchStyles({ margin: m })}>
+                {m === 0 ? 'None' : m}
               </SegmentedPill>
             ))}
           </SegmentedControl>
@@ -1263,7 +1263,7 @@ export default function Editor() {
                 showGridOverlay={isInteracting}
                 className="w-full"
               >
-                <div className="absolute inset-0" data-grid-inner>
+                <div className="absolute inset-0">
                   {activePage.blocks.length === 0 && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-text-muted text-sm font-semibold select-none text-center px-6">
                       <p>This page is empty.</p>

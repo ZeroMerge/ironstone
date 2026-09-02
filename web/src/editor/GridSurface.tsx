@@ -20,7 +20,7 @@ export default function GridSurface({
   showGridOverlay = false,
 }: GridSurfaceProps) {
   const rows = rowsFor(orientation);
-  const margin = styles?.margin ?? 24;
+  const margin = styles?.margin ?? 0;
   const gap = styles?.gridGap ?? 0;
   const radius = styles?.cornerRadius ?? 8;
   const tone = styles?.canvasTone ?? 'studio';
@@ -60,7 +60,7 @@ export default function GridSurface({
       <div
         className="absolute inset-0"
         style={{
-          padding: `${(margin / 800) * 100}%`,
+          padding: margin > 0 ? `${(margin / 800) * 100}%` : undefined,
         }}
       >
         <div className="relative w-full h-full" data-grid-inner>
@@ -75,14 +75,16 @@ export default function GridSurface({
                   id="micro-grid-48"
                   width={`${100 / COLS}%`}
                   height={`${100 / rows}%`}
-                  patternUnits="userSpaceOnUse"
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
                 >
                   <path
-                    d="M 100 0 L 0 0 0 100"
+                    d="M 0 0 L 100 0 M 0 0 L 0 100"
                     fill="none"
                     stroke={currentTone.gridColor}
-                    strokeWidth="0.5"
-                    strokeDasharray="1,2"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                    strokeDasharray="2,2"
                   />
                 </pattern>
               </defs>
@@ -108,7 +110,6 @@ export function blockStyle(
     width: `${(b.w / COLS) * 100}%`,
     height: `${(b.h / rows) * 100}%`,
     zIndex: b.zIndex ?? 1,
-    padding: 'calc(var(--grid-gap, 0px) / 2)',
     boxSizing: 'border-box',
   };
 }
