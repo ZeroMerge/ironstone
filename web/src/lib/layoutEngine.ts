@@ -2,7 +2,7 @@ import type { Block, ImageRec, Page } from './types';
 import { COLS } from './grid';
 
 export interface ImageProfile {
-  id: string; // The block ID or image ID
+  id: string;
   w: number;
   h: number;
   ar: number;
@@ -10,245 +10,400 @@ export interface ImageProfile {
 }
 
 export type LayoutEngineType = 'bento' | 'swiss' | 'editorial' | 'dual';
+export type LayoutScope = 'active' | 'all' | 'custom';
 
+/**
+ * analyzeImageProfile utility:
+ * Reads native pixel dimensions, computes exact aspect ratio (AR = w/h),
+ * and categorizes into mathematical buckets.
+ */
 export async function extractProfiles(images: ImageRec[]): Promise<Map<string, ImageProfile>> {
   const map = new Map<string, ImageProfile>();
-  
+
   const promises = images.map((img) => {
     return new Promise<void>((resolve) => {
       const url = URL.createObjectURL(img.blob);
       const image = new Image();
       image.onload = () => {
-        const w = image.naturalWidth;
-        const h = image.naturalHeight;
+        const w = image.naturalWidth || 800;
+        const h = image.naturalHeight || 800;
         const ar = w / h;
-        
+
         let orientation: ImageProfile['orientation'] = 'square';
         if (ar < 0.65) orientation = 'super-tall';
         else if (ar <= 0.85) orientation = 'portrait';
         else if (ar < 1.2) orientation = 'square';
         else if (ar <= 1.6) orientation = 'landscape';
         else orientation = 'panoramic';
-        
+
         map.set(img.id, { id: img.id, w, h, ar, orientation });
         URL.revokeObjectURL(url);
         resolve();
       };
       image.onerror = () => {
-        map.set(img.id, { id: img.id, w: 1, h: 1, ar: 1, orientation: 'square' });
+        map.set(img.id, { id: img.id, w: 800, h: 800, ar: 1.0, orientation: 'square' });
         URL.revokeObjectURL(url);
         resolve();
       };
       image.src = url;
     });
   });
-  
+
   await Promise.all(promises);
   return map;
 }
 
-function generateId() {
-  return Math.random().toString(36).substring(2, 9);
+function uid(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
 }
 
-// -------------------------------------------------------------------------
-// Layout Engines
-// -------------------------------------------------------------------------
+// 2D Spatial Occupancy Grid
+class CanvasGrid {
+  private grid: boolean[][];
+  public rows: number;
+  public cols: number;
 
-export async function applyAutoLayout(
-  engineType: LayoutEngineType,
-  blocks: Block[],
-  images: ImageRec[],
-  rows: number
-): Promise<Page[]> {
-  const pageImageIds = new Set(blocks.filter(b => b.type === 'image' && b.content).map(b => b.content));
-  const pageBlobs = images.filter(img => pageImageIds.has(img.id));
-  const profiles = await extractProfiles(pageBlobs);
+  constructor(rows: number, cols: number = COLS) {
+    this.rows = rows;
+    this.cols = cols;
+    this.grid = Array.from({ length: rows }, () => Array(cols).fill(false));
+  }
 
-  const imageBlocks = blocks.filter(b => b.type === 'image' && b.content);
-  const textBlocks = blocks.filter(b => b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption');
-  const cardBlocks = blocks.filter(b => b.type === 'card' || b.type === 'quote' || b.type === 'specSheet' || b.type === 'moodTag');
+  public isFree(x: number, y: number, w: number, h: number): boolean {
+    if (x < 0 || y < 0 || x + w > this.cols || y + h > this.rows) return false;
+    for (let r = y; r < y + h; r++) {
+      for (let c = x; c < x + w; c++) {
+        if (this.grid[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
+  public occupy(x: number, y: number, w: number, h: number): void {
+    for (let r = y; r < y + h; r++) {
+      for (let c = x; c < x + w; c++) {
+        if (r < this.rows && c < this.cols) {
+          this.grid[r][c] = true;
+        }
+      }
+    }
+  }
+
+  public findFirstFreeSlot(w: number, h: number): { x: number; y: number } | null {
+    for (let y = 0; y <= this.rows - h; y++) {
+      for (let x = 0; x <= this.cols - w; x++) {
+        if (this.isFree(x, y, w, h)) {
+          return { x, y };
+        }
+      }
+    }
+    return null;
+  }
+}
+
+/**
+ * 2D Swiss Grid Constraint Packing Solver
+ * Arranges ALL block types: Titles, Subtitles, Texts, Images, Cards, Quotes, SpecSheets, Tags, Dividers, Palettes.
+ */
+export async function applyAutoLayout({
+  engineType,
+  blocks,
+  images,
+  rows,
+  seed = 0,
+  scope = 'active',
+  customPages = 1,
+}: {
+  engineType: LayoutEngineType;
+  blocks: Block[];
+  images: ImageRec[];
+  rows: number;
+  seed?: number;
+  scope?: LayoutScope;
+  customPages?: number;
+}): Promise<Page[]> {
+  // Extract mathematical aspect ratio profiles for images and cards
+  const imageIds = new Set(
+    blocks.filter(b => (b.type === 'image' || b.type === 'card') && b.content).map(b => b.content)
+  );
+  const relevantBlobs = images.filter(img => imageIds.has(img.id));
+  const profiles = await extractProfiles(relevantBlobs);
+
+  // Group all blocks by category
+  const titleBlocks = blocks.filter(b => b.type === 'title');
+  const subtitleBlocks = blocks.filter(b => b.type === 'subtitle');
   const paletteBlocks = blocks.filter(b => b.type === 'palette');
+  const imageBlocks = blocks.filter(b => b.type === 'image');
+  const cardBlocks = blocks.filter(b => b.type === 'card');
+  const quoteBlocks = blocks.filter(b => b.type === 'quote');
+  const specBlocks = blocks.filter(b => b.type === 'specSheet');
+  const tagBlocks = blocks.filter(b => b.type === 'moodTag');
+  const textBlocks = blocks.filter(b => b.type === 'text' || b.type === 'caption');
   const dividerBlocks = blocks.filter(b => b.type === 'divider');
-  
-  // Sort images by visual mass
-  imageBlocks.sort((a, b) => {
+
+  // Hero Image Scoring: visual mass (w * h)
+  const sortedVisualBlocks = [...imageBlocks, ...cardBlocks].sort((a, b) => {
     const profA = profiles.get(a.content);
     const profB = profiles.get(b.content);
     const massA = profA ? profA.w * profA.h : 0;
     const massB = profB ? profB.w * profB.h : 0;
     return massB - massA;
   });
-  
-  const pages: Page[] = [];
-  let currentImages = [...imageBlocks];
-  let pageIndex = 0;
 
-  // Track the rest
-  const remainingTexts = [...textBlocks];
-  const remainingCards = [...cardBlocks];
-  const remainingPalettes = [...paletteBlocks];
-  const remainingDividers = [...dividerBlocks];
+  // Calculate target page count
+  let targetPageCount = 1;
+  if (scope === 'custom') {
+    targetPageCount = Math.max(1, Math.min(10, customPages));
+  } else if (scope === 'all') {
+    targetPageCount = Math.max(1, Math.ceil(blocks.length / 6));
+  }
 
-  while (currentImages.length > 0 || pageIndex === 0) {
+  // Queues for distribution
+  const unplacedTitles = [...titleBlocks];
+  const unplacedSubtitles = [...subtitleBlocks];
+  const unplacedPalettes = [...paletteBlocks];
+  const unplacedVisuals = [...sortedVisualBlocks];
+  const unplacedQuotes = [...quoteBlocks];
+  const unplacedSpecs = [...specBlocks];
+  const unplacedTags = [...tagBlocks];
+  const unplacedTexts = [...textBlocks];
+  const unplacedDividers = [...dividerBlocks];
+
+  const generatedPages: Page[] = [];
+
+  for (let pageIdx = 0; pageIdx < targetPageCount; pageIdx++) {
     const pageBlocks: Block[] = [];
-    const grid = Array.from({ length: rows }, () => Array(COLS).fill(false));
-    
-    // Check if free
-    const isFree = (bx: number, by: number, bw: number, bh: number) => {
-      if (bx + bw > COLS || by + bh > rows) return false;
-      for (let y = by; y < by + bh; y++) {
-        for (let x = bx; x < bx + bw; x++) {
-          if (grid[y][x]) return false;
-        }
-      }
-      return true;
-    };
+    const canvas = new CanvasGrid(rows, COLS);
+    const isHeroPage = pageIdx === 0;
+    const pageSeed = seed + pageIdx;
 
-    // Mark occupied
-    const occupy = (bx: number, by: number, bw: number, bh: number) => {
-      for (let y = by; y < by + bh; y++) {
-        for (let x = bx; x < bx + bw; x++) {
-          grid[y][x] = true;
-        }
-      }
-    };
-
-    const placeBlock = (b: Block, preferredX?: number, preferredY?: number) => {
-      // If preferred coordinates are given and free, use them
+    const place = (b: Block, preferredX?: number, preferredY?: number): boolean => {
       if (preferredX !== undefined && preferredY !== undefined) {
-        if (isFree(preferredX, preferredY, b.w, b.h)) {
-          b.x = preferredX; b.y = preferredY;
+        if (canvas.isFree(preferredX, preferredY, b.w, b.h)) {
+          b.x = preferredX;
+          b.y = preferredY;
+          canvas.occupy(b.x, b.y, b.w, b.h);
           pageBlocks.push(b);
-          occupy(b.x, b.y, b.w, b.h);
           return true;
         }
       }
-      
-      let placed = false;
-      for (let y = 0; y <= rows - b.h; y++) {
-        for (let x = 0; x <= COLS - b.w; x++) {
-          if (isFree(x, y, b.w, b.h)) {
-            b.x = x; b.y = y;
-            pageBlocks.push(b);
-            occupy(b.x, b.y, b.w, b.h);
-            placed = true;
-            break;
-          }
-        }
-        if (placed) break;
+      const slot = canvas.findFirstFreeSlot(b.w, b.h);
+      if (slot) {
+        b.x = slot.x;
+        b.y = slot.y;
+        canvas.occupy(b.x, b.y, b.w, b.h);
+        pageBlocks.push(b);
+        return true;
       }
-      return placed;
+      return false;
     };
 
-    // 1. Negative Space Reservation (for Page 0 only usually, or every page)
-    if (pageIndex === 0) {
-      // Title block top-left (24x6)
-      const titles = remainingTexts.filter(b => b.type === 'title');
-      if (titles.length > 0) {
-        const t = titles[0];
-        placeBlock({ ...t, w: 24, h: 6 }, 2, 2);
-        remainingTexts.splice(remainingTexts.indexOf(t), 1);
-      }
-      
-      // Palette top-right (16x4)
-      if (remainingPalettes.length > 0) {
-        const p = remainingPalettes[0];
-        placeBlock({ ...p, w: 16, h: 4 }, COLS - 16 - 2, 2);
-        remainingPalettes.splice(0, 1);
+    // 1. NEGATIVE SPACE RESERVATION (Title & Palette)
+    if (unplacedTitles.length > 0) {
+      const title = unplacedTitles.shift()!;
+      title.w = 24;
+      title.h = 4;
+      place(title, 2, 2);
+
+      if (unplacedSubtitles.length > 0) {
+        const sub = unplacedSubtitles.shift()!;
+        sub.w = 20;
+        sub.h = 3;
+        place(sub, 2, 6);
       }
     }
 
-    let heroCount = engineType === 'dual' ? 2 : (engineType === 'swiss' ? 0 : 1);
-    let placedInThisPage = 0;
-    
-    // We can randomize layout or place deterministically
-    for (let i = 0; i < currentImages.length; i++) {
-      const imgBlock = currentImages[i];
-      const prof = profiles.get(imgBlock.content);
-      if (!prof) continue;
+    if (unplacedPalettes.length > 0) {
+      const pal = unplacedPalettes.shift()!;
+      pal.w = 16;
+      pal.h = 4;
+      // Position palette in harmonic top-right corner
+      place(pal, COLS - 18, 2);
+    }
 
-      let w = 16, h = 16;
-      let preferredX, preferredY;
+    // 2. ENGINE SPECIFIC PARTITIONING
+    switch (engineType) {
+      case 'editorial': {
+        // ENGINE 3: Editorial Hero Spread (60/40 Golden Ratio)
+        // 28-column hero visual anchor + 40% dedicated typography/spec zone
+        const heroLeft = pageSeed % 2 === 0;
+        const heroX = heroLeft ? 2 : 18;
+        const sideX = heroLeft ? 32 : 2;
 
-      if (i < heroCount && pageIndex === 0) {
-        // Hero
-        if (engineType === 'editorial') {
-          w = 28; h = rows - 4; // 60/40 spread
-          preferredX = 2; preferredY = 2;
-        } else if (engineType === 'dual') {
-          w = 20; h = 24;
-          if (i === 0) { preferredX = 2; preferredY = 4; }
-          if (i === 1) { preferredX = COLS - 22; preferredY = 4; }
-        } else if (engineType === 'bento') {
-          w = prof.ar < 1 ? 24 : 28;
-          h = prof.ar < 1 ? 24 : 20;
-          // place on left or right randomly? we'll let packer find first slot
+        if (unplacedVisuals.length > 0 && isHeroPage) {
+          const hero = unplacedVisuals.shift()!;
+          hero.w = 28;
+          hero.h = rows - 6;
+          place(hero, heroX, 2);
         }
-      } else {
-        if (engineType === 'swiss') {
-          // 3 equal 14-column columns, 2 col gutters.
-          // columns at: x=2, x=18, x=34
-          w = 14; 
-          h = prof.ar < 1 ? 20 : 12; // Adjust height based on aspect ratio
-        } else {
-          // Bento or other
-          if (prof.orientation === 'super-tall' || prof.orientation === 'portrait') {
-            w = 16; h = 20;
-          } else if (prof.orientation === 'landscape' || prof.orientation === 'panoramic') {
-            w = 24; h = 16;
-          } else {
-            w = 16; h = 16;
-          }
+
+        // Place Quotes / Specs in side 40% zone
+        if (unplacedQuotes.length > 0) {
+          const q = unplacedQuotes.shift()!;
+          q.w = 14;
+          q.h = 8;
+          place(q, sideX, 2);
         }
+        if (unplacedSpecs.length > 0) {
+          const sp = unplacedSpecs.shift()!;
+          sp.w = 14;
+          sp.h = 10;
+          place(sp, sideX, 11);
+        }
+        break;
       }
 
-      const copy = { ...imgBlock, w, h };
-      if (placeBlock(copy, preferredX, preferredY)) {
-        placedInThisPage++;
-        currentImages.splice(i, 1);
+      case 'swiss': {
+        // ENGINE 2: Swiss Strict 3-Column Modernist
+        // 3 equal 14-column columns, 2-column mathematical gutters (x = 2, 18, 34)
+        const colX = [2, 18, 34];
+        let currentCol = 0;
+
+        // Place visuals with baseline-aligned heights
+        while (unplacedVisuals.length > 0 && currentCol < 3) {
+          const vis = unplacedVisuals.shift()!;
+          const prof = profiles.get(vis.content);
+          vis.w = 14;
+          vis.h = prof && prof.ar > 1.2 ? 10 : 16; // strict baseline alignment
+          const x = colX[currentCol % 3];
+          if (!place(vis, x, 8)) {
+            place(vis);
+          }
+          currentCol++;
+        }
+        break;
+      }
+
+      case 'dual': {
+        // ENGINE 4: Dual Feature Balance
+        // Paired 22-column symmetric frames (x = 2, w = 22 and x = 24, w = 22)
+        if (unplacedVisuals.length >= 2) {
+          const leftVis = unplacedVisuals.shift()!;
+          const rightVis = unplacedVisuals.shift()!;
+          leftVis.w = 21;
+          leftVis.h = rows - 8;
+          rightVis.w = 21;
+          rightVis.h = rows - 8;
+          place(leftVis, 2, 6);
+          place(rightVis, 25, 6);
+        }
+        break;
+      }
+
+      case 'bento':
+      default: {
+        // ENGINE 1: Pinterest Bento (Aspect-Ratio Aware Masonry)
+        // Hero slot (28×20) to primary image + Portrait Pairing + Landscape Stacking
+        if (unplacedVisuals.length > 0 && isHeroPage) {
+          const hero = unplacedVisuals.shift()!;
+          const prof = profiles.get(hero.content);
+          hero.w = prof && prof.ar < 1 ? 24 : 28;
+          hero.h = prof && prof.ar < 1 ? 22 : 18;
+          place(hero, pageSeed % 2 === 0 ? 2 : 18, 7);
+        }
+
+        // Portrait Pairing rule: pairing two portraits side-by-side (24+24 or 16+16)
+        const portraits = unplacedVisuals.filter(v => {
+          const p = profiles.get(v.content);
+          return p && (p.orientation === 'portrait' || p.orientation === 'super-tall');
+        });
+        if (portraits.length >= 2) {
+          const p1 = portraits[0];
+          const p2 = portraits[1];
+          unplacedVisuals.splice(unplacedVisuals.indexOf(p1), 1);
+          unplacedVisuals.splice(unplacedVisuals.indexOf(p2), 1);
+          p1.w = 16; p1.h = 16;
+          p2.w = 16; p2.h = 16;
+          if (!place(p1)) place(p1);
+          if (!place(p2)) place(p2);
+        }
+
+        // Landscape Stacking rule: stacking two landscapes vertically (16+16 rows)
+        const landscapes = unplacedVisuals.filter(v => {
+          const p = profiles.get(v.content);
+          return p && (p.orientation === 'landscape' || p.orientation === 'panoramic');
+        });
+        if (landscapes.length >= 2) {
+          const l1 = landscapes[0];
+          const l2 = landscapes[1];
+          unplacedVisuals.splice(unplacedVisuals.indexOf(l1), 1);
+          unplacedVisuals.splice(unplacedVisuals.indexOf(l2), 1);
+          l1.w = 20; l1.h = 10;
+          l2.w = 20; l2.h = 10;
+          place(l1);
+          place(l2);
+        }
+        break;
+      }
+    }
+
+    // 3. PACK REMAINING VISUALS (Aspect-Ratio Aware Fitting)
+    for (let i = 0; i < unplacedVisuals.length; i++) {
+      const vis = unplacedVisuals[i];
+      const prof = profiles.get(vis.content);
+
+      let w = 16;
+      let h = 14;
+      if (prof) {
+        if (prof.orientation === 'super-tall') { w = 12; h = 18; }
+        else if (prof.orientation === 'portrait') { w = 14; h = 16; }
+        else if (prof.orientation === 'landscape') { w = 22; h = 12; }
+        else if (prof.orientation === 'panoramic') { w = 28; h = 10; }
+        else { w = 16; h = 14; }
+      }
+
+      const blockToPlace = { ...vis, w, h };
+      if (place(blockToPlace)) {
+        unplacedVisuals.splice(i, 1);
         i--;
       }
     }
 
-    // Place remaining blocks
-    for (let i = 0; i < remainingTexts.length; i++) {
-      if (placeBlock({ ...remainingTexts[i], w: 20, h: 4 })) {
-        remainingTexts.splice(i, 1); i--;
-      }
-    }
-    for (let i = 0; i < remainingCards.length; i++) {
-      if (placeBlock({ ...remainingCards[i], w: 16, h: 10 })) {
-        remainingCards.splice(i, 1); i--;
-      }
-    }
-    for (let i = 0; i < remainingDividers.length; i++) {
-      if (placeBlock({ ...remainingDividers[i], w: 24, h: 1 })) {
-        remainingDividers.splice(i, 1); i--;
-      }
-    }
-    for (let i = 0; i < remainingPalettes.length; i++) {
-      if (placeBlock({ ...remainingPalettes[i], w: 16, h: 4 })) {
-        remainingPalettes.splice(i, 1); i--;
-      }
+    // 4. PACK REMAINING EDITORIAL BLOCKS (Cards, Quotes, Specs, Tags, Texts)
+    for (let i = 0; i < unplacedSpecs.length; i++) {
+      const sp = { ...unplacedSpecs[i], w: 18, h: 10 };
+      if (place(sp)) { unplacedSpecs.splice(i, 1); i--; }
     }
 
-    pages.push({
-      id: generateId(),
-      projectId: 'temp', // will be overwritten in Editor
+    for (let i = 0; i < unplacedQuotes.length; i++) {
+      const q = { ...unplacedQuotes[i], w: 20, h: 8 };
+      if (place(q)) { unplacedQuotes.splice(i, 1); i--; }
+    }
+
+    for (let i = 0; i < unplacedTags.length; i++) {
+      const tg = { ...unplacedTags[i], w: 18, h: 4 };
+      if (place(tg)) { unplacedTags.splice(i, 1); i--; }
+    }
+
+    for (let i = 0; i < unplacedTexts.length; i++) {
+      const tx = { ...unplacedTexts[i], w: 18, h: 5 };
+      if (place(tx)) { unplacedTexts.splice(i, 1); i--; }
+    }
+
+    for (let i = 0; i < unplacedDividers.length; i++) {
+      const div = { ...unplacedDividers[i], w: 24, h: 1 };
+      if (place(div)) { unplacedDividers.splice(i, 1); i--; }
+    }
+
+    // Push the resolved page
+    generatedPages.push({
+      id: uid(),
+      projectId: 'active',
+      order: pageIdx,
       blocks: pageBlocks,
-      order: pageIndex
     });
 
-    pageIndex++;
-    if (placedInThisPage === 0 && currentImages.length > 0) {
-      // Failsafe: if we couldn't place ANY image, force size down
-      currentImages[0].w = Math.max(4, currentImages[0].w - 4);
-      currentImages[0].h = Math.max(4, currentImages[0].h - 4);
-      // Let it loop again
+    // If all queues are empty, we don't need to generate more blank pages
+    if (
+      unplacedVisuals.length === 0 &&
+      unplacedQuotes.length === 0 &&
+      unplacedSpecs.length === 0 &&
+      unplacedTexts.length === 0 &&
+      unplacedTags.length === 0
+    ) {
+      break;
     }
-    if (pageIndex > 10) break; // Hard limit for safety
   }
 
-  return pages;
+  return generatedPages;
 }

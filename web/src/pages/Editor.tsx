@@ -14,8 +14,9 @@ import {
 } from '../db/repo';
 import { extractPalette } from '../lib/palette';
 import PalettePopover from '../editor/PalettePopover';
+import StudioStyleBar from '../editor/StudioStyleBar';
 import type { Block, ImageRec, Page, Project, ProjectStyles } from '../lib/types';
-import { applyAutoLayout, type LayoutEngineType } from '../lib/layoutEngine';
+import { applyAutoLayout, type LayoutEngineType, type LayoutScope } from '../lib/layoutEngine';
 import {
   clampBlock,
   COLS,
@@ -77,6 +78,12 @@ export default function Editor() {
   const [leftWidth, setLeftWidth] = useState(224);
   const [rightWidth, setRightWidth] = useState(288);
   const [isResizing, setIsResizing] = useState<'left' | 'right' | null>(null);
+  const [layoutScope, setLayoutScope] = useState<LayoutScope>('active');
+  const [customPageCount, setCustomPageCount] = useState<number>(2);
+  const [layoutSeed, setLayoutSeed] = useState<number>(0);
+  const [activeEngine, setActiveEngine] = useState<LayoutEngineType>('bento');
+  const [physicsMode, setPhysicsMode] = useState<'free' | 'swap' | 'push'>('free');
+  const [isLayoutRunning, setIsLayoutRunning] = useState<boolean>(false);
 
   useEffect(() => {
     function handlePointerMove(e: PointerEvent) {
@@ -1403,103 +1410,219 @@ export default function Editor() {
     </div>
   );
 
-  const handleAutoLayout = async (engine: LayoutEngineType) => {
-    if (!activePage) return;
-    const newPages = await applyAutoLayout(engine, activePage.blocks, images, rows);
-    if (newPages.length > 0) {
-      const first = { ...newPages[0], id: activePage.id, projectId: id };
-      const rest = newPages.slice(1).map(p => ({ ...p, projectId: id }));
-      
-      setPages(prev => {
-        const idx = prev.findIndex(p => p.id === activePage.id);
-        if (idx === -1) return prev;
-        const copy = [...prev];
-        copy.splice(idx, 1, first, ...rest);
-        Promise.all([putPage(first), ...rest.map(p => putPage(p))]);
-        return copy;
+  const handleAutoLayout = async (engine: LayoutEngineType = activeEngine, incrementSeed = true) => {
+    if (!activePage || !project) return;
+    setIsLayoutRunning(true);
+    setActiveEngine(engine);
+    const nextSeed = incrementSeed ? layoutSeed + 1 : layoutSeed;
+    if (incrementSeed) setLayoutSeed(nextSeed);
+
+    try {
+      if (layoutScope === 'all') {
+        const updatedPages: Page[] = [];
+        for (let i = 0; i < pages.length; i++) {
+          const p = pages[i];
+          const res = await applyAutoLayout({
+            engineType: engine,
+            blocks: p.blocks,
+            images,
+            rows,
+            seed: nextSeed + i * 3,
+            scope: 'active',
+          });
+          if (res.length > 0) {
+            updatedPages.push({ ...res[0], id: p.id, projectId: id, order: p.order });
+          } else {
+            updatedPages.push(p);
+          }
+        }
+        setPages(updatedPages);
+        await Promise.all(updatedPages.map(p => putPage(p)));
+        setIsLayoutRunning(false);
+        return;
+      }
+
+      const res = await applyAutoLayout({
+        engineType: engine,
+        blocks: activePage.blocks,
+        images,
+        rows,
+        seed: nextSeed,
+        scope: layoutScope,
+        customPages: customPageCount,
       });
-      setSelectedId(null);
-      setEditingId(null);
+
+      if (res.length > 0) {
+        const first = { ...res[0], id: activePage.id, projectId: id, order: activePage.order };
+        const rest = res.slice(1).map((p, idx) => ({
+          ...p,
+          id: uid(),
+          projectId: id,
+          order: activePage.order + idx + 1,
+        }));
+
+        setPages(prev => {
+          const idx = prev.findIndex(p => p.id === activePage.id);
+          if (idx === -1) return prev;
+          const copy = [...prev];
+          copy.splice(idx, 1, first, ...rest);
+          Promise.all([putPage(first), ...rest.map(p => putPage(p))]);
+          return copy;
+        });
+        setSelectedId(null);
+        setEditingId(null);
+      }
+    } catch (e) {
+      console.error('Auto layout execution error:', e);
+    } finally {
+      setIsLayoutRunning(false);
     }
   };
 
   const layoutTabContent = (
-    <div className="px-4 py-4 flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Auto-Layout Engine</h3>
+    <div className="px-4 py-4 flex flex-col gap-5 overflow-y-auto">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Auto-Layout Solver</h3>
         <p className="text-[11px] text-text-faint">
-          Re-arrange all blocks on this page mathematically based on their aspect ratios.
+          Constraint bisection packing: dynamically arranges all blocks to fit page dimensions with harmonic proportions.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          onClick={() => handleAutoLayout('bento')}
-          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
-        >
-          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
-            <div className="col-span-2 row-span-2 bg-accent/10 rounded-sm" />
-            <div className="bg-surface-active rounded-sm" />
-            <div className="bg-surface-active rounded-sm" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold text-ink">Pinterest Bento</div>
-            <div className="text-[10px] text-text-muted">Masonry Pack</div>
-          </div>
-        </button>
+      {/* Scope Selector */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted/70">Target Scope</span>
+        <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg gap-1">
+          <button
+            onClick={() => setLayoutScope('active')}
+            className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+              layoutScope === 'active' ? 'bg-white text-ink shadow-xs ring-1 ring-black/5 font-bold' : 'text-text-muted hover:text-ink'
+            }`}
+          >
+            Active Page
+          </button>
+          <button
+            onClick={() => setLayoutScope('custom')}
+            className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+              layoutScope === 'custom' ? 'bg-white text-ink shadow-xs ring-1 ring-black/5 font-bold' : 'text-text-muted hover:text-ink'
+            }`}
+          >
+            Custom Pages
+          </button>
+          <button
+            onClick={() => setLayoutScope('all')}
+            className={`flex-1 py-1.5 text-[11px] font-semibold rounded-md transition-all ${
+              layoutScope === 'all' ? 'bg-white text-ink shadow-xs ring-1 ring-black/5 font-bold' : 'text-text-muted hover:text-ink'
+            }`}
+          >
+            All Pages
+          </button>
+        </div>
 
-        <button
-          onClick={() => handleAutoLayout('swiss')}
-          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
-        >
-          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
-            <div className="bg-accent/10 rounded-sm h-full" />
-            <div className="bg-surface-active rounded-sm h-full" />
-            <div className="bg-surface-active rounded-sm h-full" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold text-ink">Swiss Strict</div>
-            <div className="text-[10px] text-text-muted">3-Column Grid</div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => handleAutoLayout('editorial')}
-          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
-        >
-          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 flex gap-1 p-1">
-            <div className="w-2/3 h-full bg-accent/10 rounded-sm" />
-            <div className="w-1/3 h-full flex flex-col gap-1">
-              <div className="h-1/2 w-full bg-surface-active rounded-sm" />
+        {layoutScope === 'custom' && (
+          <div className="flex items-center justify-between bg-surface-muted/30 px-3 py-2 rounded-lg border border-surface-muted/40 mt-1">
+            <span className="text-[11px] font-medium text-text-muted">Distribute across:</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCustomPageCount(Math.max(1, customPageCount - 1))}
+                className="w-6 h-6 rounded bg-surface-muted flex items-center justify-center text-ink hover:bg-surface-active text-xs font-bold"
+              >
+                -
+              </button>
+              <span className="font-mono font-bold text-xs w-6 text-center">{customPageCount}</span>
+              <button
+                onClick={() => setCustomPageCount(Math.min(10, customPageCount + 1))}
+                className="w-6 h-6 rounded bg-surface-muted flex items-center justify-center text-ink hover:bg-surface-active text-xs font-bold"
+              >
+                +
+              </button>
             </div>
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-ink">Editorial Hero</div>
-            <div className="text-[10px] text-text-muted">60/40 Ratio</div>
-          </div>
-        </button>
-
-        <button
-          onClick={() => handleAutoLayout('dual')}
-          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
-        >
-          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-2 gap-1 p-1">
-            <div className="bg-accent/10 rounded-sm h-full" />
-            <div className="bg-accent/10 rounded-sm h-full" />
-          </div>
-          <div>
-            <div className="text-[11px] font-bold text-ink">Dual Feature</div>
-            <div className="text-[10px] text-text-muted">Symmetric Pair</div>
-          </div>
-        </button>
+        )}
       </div>
 
+      {/* Preset Engines */}
+      <div className="flex flex-col gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted/70">Layout Presets</span>
+        <div className="grid grid-cols-2 gap-2.5">
+          <button
+            onClick={() => handleAutoLayout('bento', false)}
+            className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all text-left ${
+              activeEngine === 'bento' ? 'bg-white border-accent shadow-xs ring-1 ring-accent' : 'bg-surface-muted/30 hover:bg-surface-muted border-surface-muted'
+            }`}
+          >
+            <div className="w-full h-14 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
+              <div className="col-span-2 row-span-2 bg-accent/15 rounded-xs" />
+              <div className="bg-surface-active rounded-xs" />
+              <div className="bg-surface-active rounded-xs" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-ink">Pinterest Bento</div>
+              <div className="text-[10px] text-text-muted">Aspect-Ratio Masonry</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleAutoLayout('swiss', false)}
+            className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all text-left ${
+              activeEngine === 'swiss' ? 'bg-white border-accent shadow-xs ring-1 ring-accent' : 'bg-surface-muted/30 hover:bg-surface-muted border-surface-muted'
+            }`}
+          >
+            <div className="w-full h-14 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
+              <div className="bg-accent/15 rounded-xs h-full" />
+              <div className="bg-surface-active rounded-xs h-full" />
+              <div className="bg-surface-active rounded-xs h-full" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-ink">Swiss Strict</div>
+              <div className="text-[10px] text-text-muted">3-Column Grid</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleAutoLayout('editorial', false)}
+            className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all text-left ${
+              activeEngine === 'editorial' ? 'bg-white border-accent shadow-xs ring-1 ring-accent' : 'bg-surface-muted/30 hover:bg-surface-muted border-surface-muted'
+            }`}
+          >
+            <div className="w-full h-14 bg-white rounded border border-surface-muted/50 flex gap-1 p-1">
+              <div className="w-2/3 h-full bg-accent/15 rounded-xs" />
+              <div className="w-1/3 h-full flex flex-col gap-1">
+                <div className="h-1/2 w-full bg-surface-active rounded-xs" />
+                <div className="h-1/2 w-full bg-surface-active rounded-xs" />
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-ink">Editorial Hero</div>
+              <div className="text-[10px] text-text-muted">60/40 Ratio</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleAutoLayout('dual')}
+            className={`flex flex-col items-start gap-2 p-3 rounded-xl border transition-all text-left ${
+              activeEngine === 'dual' ? 'bg-white border-accent shadow-xs ring-1 ring-accent' : 'bg-surface-muted/30 hover:bg-surface-muted border-surface-muted'
+            }`}
+          >
+            <div className="w-full h-14 bg-white rounded border border-surface-muted/50 grid grid-cols-2 gap-1 p-1">
+              <div className="bg-accent/15 rounded-xs h-full" />
+              <div className="bg-accent/15 rounded-xs h-full" />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-ink">Dual Feature</div>
+              <div className="text-[10px] text-text-muted">Symmetric Pair</div>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Reroll Button */}
       <button
-        onClick={() => handleAutoLayout('bento')}
-        className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 mt-2"
+        onClick={() => handleAutoLayout(activeEngine, true)}
+        disabled={isLayoutRunning}
+        className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 mt-1 shadow-sm"
       >
-        <Wand2 size={16} strokeWidth={2} />
-        <span className="text-sm">✨ Re-roll Layout</span>
+        <Wand2 size={16} strokeWidth={2} className={isLayoutRunning ? 'animate-spin' : ''} />
+        <span className="text-sm font-semibold">{isLayoutRunning ? 'Arranging Grid...' : '✨ Re-roll Layout'}</span>
       </button>
     </div>
   );
@@ -1666,6 +1789,26 @@ export default function Editor() {
         }}
       >
         <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
+          {/* Top Studio Controls Bar (Mounted & Fully Functional) */}
+          {project && (
+            <StudioStyleBar
+              styles={project.styles ?? {}}
+              onChange={patchStyles}
+              physicsMode={physicsMode}
+              onPhysicsModeChange={setPhysicsMode}
+              onEyedropper={async () => {
+                if ('EyeDropper' in window) {
+                  try {
+                    const eyeDropper = new (window as any).EyeDropper();
+                    const result = await eyeDropper.open();
+                    if (result?.sRGBHex) {
+                      patchStyles({ canvasTone: 'studio' });
+                    }
+                  } catch (e) {}
+                }
+              }}
+            />
+          )}
 
 
 
