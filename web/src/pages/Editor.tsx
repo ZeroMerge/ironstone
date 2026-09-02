@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload } from 'lucide-react';
+import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2 } from 'lucide-react';
 import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
@@ -15,6 +15,7 @@ import {
 import { extractPalette } from '../lib/palette';
 import PalettePopover from '../editor/PalettePopover';
 import type { Block, ImageRec, Page, Project, ProjectStyles } from '../lib/types';
+import { applyAutoLayout, type LayoutEngineType } from '../lib/layoutEngine';
 import {
   clampBlock,
   COLS,
@@ -69,7 +70,7 @@ export default function Editor() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
   const [rightInspectorOpen, setRightInspectorOpen] = useState(true);
-  const [activeInspectorTab, setActiveInspectorTab] = useState<'design' | 'components' | 'assets'>('design');
+  const [activeInspectorTab, setActiveInspectorTab] = useState<'design' | 'components' | 'assets' | 'layout'>('layout');
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [zenMessage, setZenMessage] = useState<string | null>(null);
   const [leftOpen, setLeftOpen] = useState(true);
@@ -859,6 +860,292 @@ export default function Editor() {
       );
     }
 
+    // CARD BLOCK
+    if (selectedBlock && selectedBlock.type === 'card') {
+      const caption = selectedBlock.data?.caption ?? 'FIG. 01 — ARCHIVAL REFERENCE / SS26';
+      const padding = selectedBlock.data?.padding ?? 8;
+      const radius = selectedBlock.style?.borderRadius ?? (project?.styles?.cornerRadius ?? 8);
+      return (
+        <div className="px-4 py-4">
+          <BlockActions />
+          <div className="mb-6">
+            <SectionLabel>Caption Text</SectionLabel>
+            <input
+              type="text"
+              value={caption}
+              onChange={e => patchBlockData({ caption: e.target.value })}
+              className="w-full bg-surface-muted/40 border border-surface-muted rounded-lg px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:border-accent"
+              placeholder="Enter caption..."
+            />
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Sub-Padding</SectionLabel>
+            <SegmentedControl>
+              {[4, 8, 12, 16].map(p => (
+                <SegmentedPill key={p} active={padding === p} onClick={() => patchBlockData({ padding: p })}>
+                  {p}px
+                </SegmentedPill>
+              ))}
+            </SegmentedControl>
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Corner Radius — {radius}px</SectionLabel>
+            <div className="bg-surface-muted/30 p-3 rounded-lg">
+              <input
+                type="range"
+                min={0}
+                max={32}
+                value={radius}
+                onChange={e => patchBlock({ borderRadius: Number(e.target.value) })}
+                className="w-full accent-ink"
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => setPickerBlockId(selectedBlock.id)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-surface-muted/30 rounded-lg text-[12px] font-semibold text-text-muted hover:text-ink hover:bg-surface-muted transition-colors"
+          >
+            <Upload size={14} strokeWidth={2} />
+            {selectedBlock.content ? 'Change Card Image' : 'Select Card Image'}
+          </button>
+        </div>
+      );
+    }
+
+    // EDITORIAL QUOTE BLOCK
+    if (selectedBlock && selectedBlock.type === 'quote') {
+      const quoteText = selectedBlock.content || '';
+      const author = selectedBlock.data?.author || '';
+      const source = selectedBlock.data?.source || '';
+      const quoteStyle = selectedBlock.data?.quoteStyle || 'serif';
+      return (
+        <div className="px-4 py-4">
+          <BlockActions />
+          <div className="mb-6">
+            <SectionLabel>Quote Text</SectionLabel>
+            <textarea
+              rows={4}
+              value={quoteText}
+              onChange={e => {
+                if (!activePage) return;
+                updateBlock(activePage.id, { ...selectedBlock, content: e.target.value });
+              }}
+              className="w-full bg-surface-muted/40 border border-surface-muted rounded-lg px-3 py-2 text-xs font-serif italic text-ink focus:outline-none focus:border-accent resize-none"
+              placeholder="Type quote here..."
+            />
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Author Attribution</SectionLabel>
+            <input
+              type="text"
+              value={author}
+              onChange={e => patchBlockData({ author: e.target.value })}
+              className="w-full bg-surface-muted/40 border border-surface-muted rounded-lg px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:border-accent"
+              placeholder="e.g. Dieter Rams"
+            />
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Source / Citation</SectionLabel>
+            <input
+              type="text"
+              value={source}
+              onChange={e => patchBlockData({ source: e.target.value })}
+              className="w-full bg-surface-muted/40 border border-surface-muted rounded-lg px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:border-accent"
+              placeholder="e.g. Ten Principles"
+            />
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Typographic Style</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={quoteStyle === 'serif'} onClick={() => patchBlockData({ quoteStyle: 'serif' })}>
+                Serif
+              </SegmentedPill>
+              <SegmentedPill active={quoteStyle === 'sans'} onClick={() => patchBlockData({ quoteStyle: 'sans' })}>
+                Sans
+              </SegmentedPill>
+            </SegmentedControl>
+          </div>
+        </div>
+      );
+    }
+
+    // STUDIO SPEC SHEET BLOCK
+    if (selectedBlock && selectedBlock.type === 'specSheet') {
+      const client = selectedBlock.data?.client ?? 'STUDIO ACNE';
+      const date = selectedBlock.data?.date ?? '2026.04.12';
+      const season = selectedBlock.data?.season ?? 'FW / 2026';
+      const projectCode = selectedBlock.data?.projectCode ?? 'IRN-SPEC-09';
+      const leadDesigner = selectedBlock.data?.leadDesigner ?? 'M. BORSCHE';
+      return (
+        <div className="px-4 py-4">
+          <BlockActions />
+          <div className="mb-4">
+            <SectionLabel>Spec Sheet Fields</SectionLabel>
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <label className="text-[10px] font-mono uppercase text-text-muted">Client</label>
+                <input
+                  type="text"
+                  value={client}
+                  onChange={e => patchBlockData({ client: e.target.value })}
+                  className="w-full bg-surface-muted/40 border border-surface-muted rounded-md px-2.5 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent mt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-text-muted">Date</label>
+                <input
+                  type="text"
+                  value={date}
+                  onChange={e => patchBlockData({ date: e.target.value })}
+                  className="w-full bg-surface-muted/40 border border-surface-muted rounded-md px-2.5 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent mt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-text-muted">Season</label>
+                <input
+                  type="text"
+                  value={season}
+                  onChange={e => patchBlockData({ season: e.target.value })}
+                  className="w-full bg-surface-muted/40 border border-surface-muted rounded-md px-2.5 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent mt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-text-muted">Project Code</label>
+                <input
+                  type="text"
+                  value={projectCode}
+                  onChange={e => patchBlockData({ projectCode: e.target.value })}
+                  className="w-full bg-surface-muted/40 border border-surface-muted rounded-md px-2.5 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent mt-0.5"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono uppercase text-text-muted">Lead Designer</label>
+                <input
+                  type="text"
+                  value={leadDesigner}
+                  onChange={e => patchBlockData({ leadDesigner: e.target.value })}
+                  className="w-full bg-surface-muted/40 border border-surface-muted rounded-md px-2.5 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent mt-0.5"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // MOOD TAG BLOCK
+    if (selectedBlock && selectedBlock.type === 'moodTag') {
+      const tags: string[] = selectedBlock.data?.tags ?? ['#Brutalism', '#FW26', '#Editorial'];
+      const style = selectedBlock.data?.style ?? 'filled';
+      return (
+        <div className="px-4 py-4">
+          <BlockActions />
+          <div className="mb-6">
+            <SectionLabel>Active Tags</SectionLabel>
+            <div className="flex flex-wrap gap-1.5 p-2 bg-surface-muted/20 border border-surface-muted rounded-lg mb-3">
+              {tags.map((t, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-surface-muted text-xs font-mono text-ink">
+                  {t}
+                  <button
+                    onClick={() => patchBlockData({ tags: tags.filter((_, i) => i !== idx) })}
+                    className="hover:text-red-500 font-bold ml-1"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                id="new-tag-input"
+                type="text"
+                placeholder="Add tag..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = e.currentTarget;
+                    const val = input.value.trim();
+                    if (val) {
+                      const formatted = val.startsWith('#') ? val : `#${val}`;
+                      if (!tags.includes(formatted)) {
+                        patchBlockData({ tags: [...tags, formatted] });
+                      }
+                      input.value = '';
+                    }
+                  }
+                }}
+                className="flex-1 bg-surface-muted/40 border border-surface-muted rounded-lg px-3 py-1.5 text-xs font-mono text-ink focus:outline-none focus:border-accent"
+              />
+              <button
+                onClick={() => {
+                  const el = document.getElementById('new-tag-input') as HTMLInputElement;
+                  if (el && el.value.trim()) {
+                    const val = el.value.trim();
+                    const formatted = val.startsWith('#') ? val : `#${val}`;
+                    if (!tags.includes(formatted)) {
+                      patchBlockData({ tags: [...tags, formatted] });
+                    }
+                    el.value = '';
+                  }
+                }}
+                className="btn-primary !py-1 !px-3 text-xs"
+              >
+                Add
+              </button>
+            </div>
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Tag Style</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={style === 'filled'} onClick={() => patchBlockData({ style: 'filled' })}>
+                Filled
+              </SegmentedPill>
+              <SegmentedPill active={style === 'outline'} onClick={() => patchBlockData({ style: 'outline' })}>
+                Outline
+              </SegmentedPill>
+            </SegmentedControl>
+          </div>
+        </div>
+      );
+    }
+
+    // HAIRLINE DIVIDER BLOCK
+    if (selectedBlock && selectedBlock.type === 'divider') {
+      const style = selectedBlock.data?.style ?? 'solid';
+      const opacity = selectedBlock.data?.opacity ?? 60;
+      return (
+        <div className="px-4 py-4">
+          <BlockActions />
+          <div className="mb-6">
+            <SectionLabel>Line Style</SectionLabel>
+            <SegmentedControl>
+              <SegmentedPill active={style === 'solid'} onClick={() => patchBlockData({ style: 'solid' })}>
+                Solid
+              </SegmentedPill>
+              <SegmentedPill active={style === 'dashed'} onClick={() => patchBlockData({ style: 'dashed' })}>
+                Dashed
+              </SegmentedPill>
+              <SegmentedPill active={style === 'dotted'} onClick={() => patchBlockData({ style: 'dotted' })}>
+                Dotted
+              </SegmentedPill>
+            </SegmentedControl>
+          </div>
+          <div className="mb-6">
+            <SectionLabel>Opacity — {opacity}%</SectionLabel>
+            <div className="bg-surface-muted/30 p-3 rounded-lg">
+              <input
+                type="range"
+                min={10}
+                max={100}
+                value={opacity}
+                onChange={e => patchBlockData({ opacity: Number(e.target.value) })}
+                className="w-full accent-ink"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // NOTHING SELECTED → Global Document Styles
     const styles = project?.styles ?? {};
     return (
@@ -929,92 +1216,147 @@ export default function Editor() {
   // ── Components Tab ────────────────────────────────────────────────────────
 
   const componentsTabContent = (
-    <div className="px-4 py-4 grid grid-cols-2 gap-3">
-
-      {/* Title Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'title' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Title</span>
-        <div className="text-2xl font-extrabold text-ink leading-none tracking-tight">Ag</div>
+    <div className="px-4 py-4 flex flex-col gap-4 overflow-y-auto">
+      <div className="flex flex-col gap-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted/70">Canvas Blocks</span>
+        <p className="text-[11px] text-text-faint">Drag any block onto the 48×32 canvas grid.</p>
       </div>
 
-      {/* Subtitle Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'subtitle' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Subtitle</span>
-        <div className="text-sm font-semibold text-text-muted leading-tight mt-auto">Section heading</div>
-      </div>
-
-      {/* Body Text Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'text' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Body Text</span>
-        <div className="text-[10px] text-text-muted/70 leading-relaxed">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.</div>
-      </div>
-
-      {/* Image Frame Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Image</span>
-        <div className="h-10 bg-black/5 rounded-md flex items-center justify-center text-text-muted/30 group-hover:text-text-muted/50 transition-colors">
-          <ImageIcon size={18} strokeWidth={2.5} />
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Title */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'title' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Title</span>
+          <div className="text-xl font-extrabold text-ink leading-none tracking-tight my-1.5">Headline</div>
+          <span className="text-[9px] text-text-faint">24×4 Header</span>
         </div>
-      </div>
 
-      {/* Color Palette Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'palette' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Palette</span>
-        <div className="flex gap-1 h-10">
-          <div className="flex-1 bg-ink rounded-md shadow-sm" />
-          <div className="flex-1 bg-surface-muted rounded-md shadow-sm" />
-          <div className="flex-1 bg-text-muted/20 rounded-md shadow-sm" />
+        {/* Subtitle */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'subtitle' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Subtitle</span>
+          <div className="text-xs font-semibold text-text-muted leading-tight my-1.5 truncate">Section Direction</div>
+          <span className="text-[9px] text-text-faint">20×3 Horizon</span>
         </div>
-      </div>
 
-      {/* Bento Card Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'card' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Bento Card</span>
-        <div className="flex gap-2 h-12">
-          <div className="flex-1 bg-white rounded-lg shadow-sm border border-black/5" />
-          <div className="w-1/3 flex flex-col gap-2">
-            <div className="flex-1 bg-white rounded-md shadow-sm border border-black/5" />
-            <div className="flex-1 bg-white rounded-md shadow-sm border border-black/5" />
+        {/* Body Text */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'text' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none col-span-2"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Body Text</span>
+          <div className="text-[10px] text-text-muted/70 leading-relaxed my-1">
+            Write project notes, conceptual references, or studio notes inline.
           </div>
+          <span className="text-[9px] text-text-faint">20×6 Flexible Column</span>
+        </div>
+
+        {/* Image Frame */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'image' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Image Frame</span>
+          <div className="h-10 bg-black/5 rounded-md flex items-center justify-center text-text-muted/40 my-1">
+            <ImageIcon size={18} strokeWidth={2} />
+          </div>
+          <span className="text-[9px] text-text-faint">16×12 Visual Cell</span>
+        </div>
+
+        {/* Card Block */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'card' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Card Block</span>
+          <div className="h-10 bg-white rounded-md border border-black/5 flex flex-col p-1 gap-1 my-1">
+            <div className="flex-1 bg-surface-active/80 rounded-[2px]" />
+            <div className="h-1 w-3/4 bg-text-muted/30 rounded-full" />
+          </div>
+          <span className="text-[9px] text-text-faint">Image + Caption Unit</span>
+        </div>
+
+        {/* Editorial Quote */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'quote' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Quote Block</span>
+          <div className="my-1 flex items-start gap-1">
+            <span className="text-lg font-serif italic text-accent leading-none">“</span>
+            <span className="text-[10px] font-serif italic text-ink/80 line-clamp-2">Good design is as little design...</span>
+          </div>
+          <span className="text-[9px] text-text-faint">20×8 Editorial Callout</span>
+        </div>
+
+        {/* Studio Spec Sheet */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'specSheet' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Spec Sheet</span>
+          <div className="my-1 flex flex-col gap-0.5 font-mono text-[8px] text-text-muted">
+            <div className="flex justify-between border-b border-black/5 pb-0.5"><span>CLIENT</span><span className="text-ink font-semibold">STUDIO</span></div>
+            <div className="flex justify-between"><span>SEASON</span><span className="text-ink font-semibold">FW26</span></div>
+          </div>
+          <span className="text-[9px] text-text-faint">18×10 Metadata Table</span>
+        </div>
+
+        {/* Mood Tags */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'moodTag' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Mood Tags</span>
+          <div className="my-1 flex flex-wrap gap-1">
+            <span className="px-1.5 py-0.5 rounded-full bg-surface-active text-[8px] font-mono text-ink">#Brutal</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-surface-active text-[8px] font-mono text-ink">#FW26</span>
+          </div>
+          <span className="text-[9px] text-text-faint">18×5 Pill Badges</span>
+        </div>
+
+        {/* Hairline Divider */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'divider' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Hairline Divider</span>
+          <div className="h-6 flex items-center justify-center my-1">
+            <div className="w-full h-px bg-ink/40 group-hover:bg-ink transition-colors" />
+          </div>
+          <span className="text-[9px] text-text-faint">1px Accent Rule</span>
+        </div>
+
+        {/* Color Palette */}
+        <div
+          draggable
+          onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'palette' }))}
+          className="group flex flex-col justify-between bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing border border-surface-muted/40 transition-all select-none col-span-2"
+        >
+          <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/60">Color Palette</span>
+          <div className="flex gap-1 h-8 my-1 rounded-md overflow-hidden border border-black/5">
+            <div className="flex-1 bg-[#111110]" />
+            <div className="flex-1 bg-[#6E6C67]" />
+            <div className="flex-1 bg-[#A09D96]" />
+            <div className="flex-1 bg-[#E5E5E3]" />
+            <div className="flex-1 bg-[#FAFAF9]" />
+          </div>
+          <span className="text-[9px] text-text-faint">16×4 Dynamic Swatches</span>
         </div>
       </div>
-
-      {/* Divider Snapshot */}
-      <div
-        draggable
-        onDragStart={e => e.dataTransfer.setData('application/json', JSON.stringify({ type: 'divider' }))}
-        className="group flex flex-col gap-2 bg-surface-muted/30 hover:bg-surface-muted/60 p-3 rounded-xl cursor-grab active:cursor-grabbing transition-colors select-none col-span-2"
-      >
-        <span className="text-[9px] font-bold uppercase tracking-wider text-text-muted/50 group-hover:text-text-muted/70 transition-colors">Divider</span>
-        <div className="h-4 flex items-center">
-          <div className="w-full h-px bg-text-muted/30 group-hover:bg-text-muted/50 transition-colors" />
-        </div>
-      </div>
-
     </div>
   );
 
@@ -1061,11 +1403,113 @@ export default function Editor() {
     </div>
   );
 
+  const handleAutoLayout = async (engine: LayoutEngineType) => {
+    if (!activePage) return;
+    const newPages = await applyAutoLayout(engine, activePage.blocks, images, rows);
+    if (newPages.length > 0) {
+      const first = { ...newPages[0], id: activePage.id, projectId: id };
+      const rest = newPages.slice(1).map(p => ({ ...p, projectId: id }));
+      
+      setPages(prev => {
+        const idx = prev.findIndex(p => p.id === activePage.id);
+        if (idx === -1) return prev;
+        const copy = [...prev];
+        copy.splice(idx, 1, first, ...rest);
+        Promise.all([putPage(first), ...rest.map(p => putPage(p))]);
+        return copy;
+      });
+      setSelectedId(null);
+      setEditingId(null);
+    }
+  };
+
+  const layoutTabContent = (
+    <div className="px-4 py-4 flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-text-muted">Auto-Layout Engine</h3>
+        <p className="text-[11px] text-text-faint">
+          Re-arrange all blocks on this page mathematically based on their aspect ratios.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => handleAutoLayout('bento')}
+          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
+        >
+          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
+            <div className="col-span-2 row-span-2 bg-accent/10 rounded-sm" />
+            <div className="bg-surface-active rounded-sm" />
+            <div className="bg-surface-active rounded-sm" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-ink">Pinterest Bento</div>
+            <div className="text-[10px] text-text-muted">Masonry Pack</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleAutoLayout('swiss')}
+          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
+        >
+          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-3 gap-1 p-1">
+            <div className="bg-accent/10 rounded-sm h-full" />
+            <div className="bg-surface-active rounded-sm h-full" />
+            <div className="bg-surface-active rounded-sm h-full" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-ink">Swiss Strict</div>
+            <div className="text-[10px] text-text-muted">3-Column Grid</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleAutoLayout('editorial')}
+          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
+        >
+          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 flex gap-1 p-1">
+            <div className="w-2/3 h-full bg-accent/10 rounded-sm" />
+            <div className="w-1/3 h-full flex flex-col gap-1">
+              <div className="h-1/2 w-full bg-surface-active rounded-sm" />
+            </div>
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-ink">Editorial Hero</div>
+            <div className="text-[10px] text-text-muted">60/40 Ratio</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handleAutoLayout('dual')}
+          className="flex flex-col items-start gap-2 p-3 bg-surface-muted/30 hover:bg-surface-muted border border-surface-muted rounded-xl transition-all text-left"
+        >
+          <div className="w-full h-16 bg-white rounded border border-surface-muted/50 grid grid-cols-2 gap-1 p-1">
+            <div className="bg-accent/10 rounded-sm h-full" />
+            <div className="bg-accent/10 rounded-sm h-full" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-ink">Dual Feature</div>
+            <div className="text-[10px] text-text-muted">Symmetric Pair</div>
+          </div>
+        </button>
+      </div>
+
+      <button
+        onClick={() => handleAutoLayout('bento')}
+        className="btn-primary w-full py-2.5 flex items-center justify-center gap-2 mt-2"
+      >
+        <Wand2 size={16} strokeWidth={2} />
+        <span className="text-sm">✨ Re-roll Layout</span>
+      </button>
+    </div>
+  );
+
   // ── Right Sidebar Assembly ─────────────────────────────────────────────────
-  const inspectorTabs: { id: 'design' | 'components' | 'assets'; icon: React.ReactNode; title: string }[] = [
+  const inspectorTabs: { id: 'design' | 'components' | 'assets' | 'layout'; icon: React.ReactNode; title: string }[] = [
     { id: 'design', icon: <SlidersHorizontal size={16} strokeWidth={activeInspectorTab === 'design' ? 2.5 : 2} />, title: 'Design' },
     { id: 'components', icon: <LayoutGrid size={16} strokeWidth={activeInspectorTab === 'components' ? 2.5 : 2} />, title: 'Components' },
     { id: 'assets', icon: <ImageIcon size={16} strokeWidth={activeInspectorTab === 'assets' ? 2.5 : 2} />, title: 'Assets' },
+    { id: 'layout', icon: <Wand2 size={16} strokeWidth={activeInspectorTab === 'layout' ? 2.5 : 2} />, title: 'Auto-Layout' },
   ];
 
   const rightSidebarJsx = (
@@ -1092,6 +1536,7 @@ export default function Editor() {
         {activeInspectorTab === 'design' && designTabContent}
         {activeInspectorTab === 'components' && componentsTabContent}
         {activeInspectorTab === 'assets' && assetsTabContent}
+        {activeInspectorTab === 'layout' && layoutTabContent}
       </div>
     </div>
   );
@@ -1207,7 +1652,19 @@ export default function Editor() {
 
   const canvasJsx = (
     <>
-      <section className="flex-1 overflow-auto scrollbar-hide" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+      <section 
+        className="flex-1 overflow-auto scrollbar-hide" 
+        onPointerMove={onPointerMove} 
+        onPointerUp={onPointerUp}
+        onPointerDown={(e) => {
+          const target = e.target as HTMLElement;
+          if (!target.closest('[data-block="true"]') && !target.closest('[data-text-toolbar="true"]') && !target.closest('[data-action-pill="true"]')) {
+            setSelectedId(null);
+            setEditingId(null);
+            window.getSelection()?.removeAllRanges();
+          }
+        }}
+      >
         <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
 
 
@@ -1249,11 +1706,22 @@ export default function Editor() {
                   } else if (data.type === 'caption') {
                     w = 16; h = 2; content = 'FIG. 01 — RUNWAY DETAILS / SS26';
                   } else if (data.type === 'image') {
-                    w = 16; h = 10; content = data.content || '';
+                    w = 16; h = 12; content = data.content || '';
                   } else if (data.type === 'card') {
-                    w = 16; h = 8; content = '';
+                    w = 16; h = 14; content = data.content || '';
+                    blockData = { caption: 'FIG. 01 — ARCHIVAL REFERENCE / SS26', padding: 8 };
+                  } else if (data.type === 'quote') {
+                    w = 20; h = 8; content = 'Good design is as little design as possible.';
+                    blockData = { author: 'Dieter Rams', source: 'Ten Principles for Good Design', quoteStyle: 'serif' };
+                  } else if (data.type === 'specSheet') {
+                    w = 18; h = 10; content = '';
+                    blockData = { client: 'STUDIO ACNE', date: '2026.04.12', season: 'FALL / WINTER 26', projectCode: 'IRN-SPEC-09', leadDesigner: 'M. BORSCHE' };
+                  } else if (data.type === 'moodTag') {
+                    w = 18; h = 5; content = '';
+                    blockData = { tags: ['#Brutalism', '#FW26', '#Editorial', '#RawMaterials', '#Swiss'], style: 'filled' };
                   } else if (data.type === 'divider') {
                     w = 24; h = 1; content = '';
+                    blockData = { style: 'solid', opacity: 60, color: '#111110' };
                   } else if (data.type === 'palette') {
                     w = 16; h = 4;
                     let colors = ['#111110', '#6E6C67', '#A09D96', '#E5E5E3', '#FAFAF9'];
@@ -1281,19 +1749,7 @@ export default function Editor() {
                   // Not a JSON drag drop
                 }
               }}
-              onPointerDown={(e) => {
-                const target = e.target as HTMLElement;
-                if (
-                  target.hasAttribute('data-grid-inner') ||
-                  target.hasAttribute('data-grid-surface') ||
-                  target.closest('svg') ||
-                  target === e.currentTarget
-                ) {
-                  setSelectedId(null);
-                  setEditingId(null);
-                  window.getSelection()?.removeAllRanges();
-                }
-              }}
+
             >
               <GridSurface
                 orientation={project.orientation}
@@ -1319,13 +1775,14 @@ export default function Editor() {
                     return (
                       <div
                         key={b.id}
+                        data-block="true"
                         style={blockStyle(b, rows)}
                         onPointerDown={(e) => onBlockPointerDown(e, b)}
                         onDoubleClick={() => {
                           if (b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption') {
                             setEditingId(b.id);
                             setSelectedId(b.id);
-                          } else if (b.type === 'image') {
+                          } else if (b.type === 'image' || b.type === 'card') {
                             setPickerBlockId(b.id);
                             setSelectedId(b.id);
                           }
@@ -1427,6 +1884,62 @@ export default function Editor() {
                                 {Math.round(b.w * (surfaceRef.current ? surfaceRef.current.clientWidth / COLS : 20))} × {Math.round(b.h * (surfaceRef.current ? surfaceRef.current.clientHeight / rows : 20))}
                               </div>
                             </>
+                          )}
+
+                          {/* Floating Hover Action Pill (Small, inconspicuous, disappears when moving, reappears on rest) */}
+                          {selected && !isInteracting && (
+                            <div
+                              data-action-pill="true"
+                              onPointerDown={(e) => e.stopPropagation()}
+                              className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#1C1C1E]/95 text-white/90 backdrop-blur-md px-1.5 py-0.5 rounded-full shadow-lg border border-white/10 flex items-center gap-1 z-40 select-none pointer-events-auto"
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  duplicateSelected();
+                                }}
+                                title="Duplicate Block"
+                                className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                              >
+                                <Copy size={13} strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  bringForward();
+                                }}
+                                title="Bring to Front"
+                                className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                              >
+                                <ArrowUp size={13} strokeWidth={2} />
+                              </button>
+                              {(b.type === 'image' || b.type === 'card') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPickerBlockId(b.id);
+                                  }}
+                                  title="Replace Image"
+                                  className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                                >
+                                  <Upload size={13} strokeWidth={2} />
+                                </button>
+                              )}
+                              <div className="w-px h-3 bg-white/20 mx-0.5" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activePage) {
+                                    persistPage({ ...activePage, blocks: activePage.blocks.filter(item => item.id !== b.id) });
+                                    setSelectedId(null);
+                                  }
+                                }}
+                                title="Delete Block"
+                                className="p-1 hover:bg-red-500/80 hover:text-white text-white/70 rounded-full transition-colors flex items-center justify-center"
+                              >
+                                <Trash2 size={13} strokeWidth={2} />
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1562,8 +2075,6 @@ export default function Editor() {
 
         {/* Center Canvas */}
         <section className="flex-1 min-w-[400px] overflow-auto scrollbar-hide bg-surface rounded-md shadow-sm border border-surface-muted/50 relative flex flex-col" onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-
-
           {viewMode === 'overview' ? overviewJsx : canvasJsx}
         </section>
 
@@ -1688,7 +2199,7 @@ function EditorBlockContent({ block, onSwatchClick }: { block: Block, onSwatchCl
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    if (block.type === 'image' && block.content) {
+    if ((block.type === 'image' || block.type === 'card') && block.content) {
       getImage(block.content).then((rec) => {
         if (!cancelled && rec) setUrl(objectUrlFor(rec.id, rec.blob));
       });

@@ -1,8 +1,9 @@
 import type { Block } from '../lib/types';
+import { Image as ImageIcon } from 'lucide-react';
 
 /**
  * Presentational block content. Uses container-query units so typography
- * scales with the page at any size ?" editor canvas, thumbnails, and print.
+ * scales with the page at any size — editor canvas, thumbnails, and print.
  */
 export default function BlockStatic({
   block,
@@ -104,7 +105,7 @@ export default function BlockStatic({
       return imageUrl ? (
         <img
           src={imageUrl}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover select-none pointer-events-none"
           style={radiusStyle}
           alt=""
         />
@@ -113,6 +114,162 @@ export default function BlockStatic({
           No image
         </div>
       );
+    case 'card': {
+      // Composite Image + Locked Caption Container
+      const subPadding = block.data?.padding ?? 10;
+      const captionText = block.data?.caption ?? 'FIG. 01 — ARCHIVAL REFERENCE / SS26';
+      return (
+        <div 
+          className="w-full h-full bg-white shadow-sm border border-surface-muted/80 flex flex-col overflow-hidden select-none"
+          style={{ ...radiusStyle, padding: `${subPadding}px` }}
+        >
+          <div className="flex-1 w-full min-h-0 relative overflow-hidden rounded-[calc(var(--block-radius,8px)-2px)] bg-surface-active/60">
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                className="w-full h-full object-cover select-none pointer-events-none"
+                alt=""
+              />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-muted/60 p-2 text-center">
+                <ImageIcon size={20} strokeWidth={1.5} />
+                <span className="font-mono text-[1.1cqw] uppercase tracking-wider">Drop or double-click image</span>
+              </div>
+            )}
+          </div>
+          <div className="pt-2 shrink-0 overflow-hidden">
+            <p className="font-mono uppercase tracking-[0.08em] font-medium leading-[1.3] text-[1.2cqw] text-text-muted truncate">
+              {captionText}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    case 'quote': {
+      // Editorial Quote Block
+      const quoteText = block.content || 'Good design is as little design as possible.';
+      const author = block.data?.author || 'Dieter Rams';
+      const source = block.data?.source || 'Ten Principles for Good Design';
+      const quoteStyle = block.data?.quoteStyle ?? 'serif';
+
+      return (
+        <div 
+          className="w-full h-full flex flex-col justify-between p-4 overflow-hidden bg-white/70 border border-surface-muted/60 shadow-sm select-none"
+          style={radiusStyle}
+        >
+          <div className="flex-1 flex flex-col justify-start overflow-hidden">
+            <span className="font-serif text-[6cqw] text-accent/40 leading-none select-none -mb-2">“</span>
+            <p className={`leading-[1.25] text-[2.1cqw] text-ink overflow-hidden text-ellipsis line-clamp-4 ${quoteStyle === 'serif' ? 'font-serif italic' : 'font-sans font-medium'}`}>
+              {quoteText}
+            </p>
+          </div>
+          <div className="pt-2 border-t border-surface-muted/50 mt-auto shrink-0 flex items-center justify-between">
+            <span className="font-mono uppercase tracking-[0.12em] font-semibold text-[1.1cqw] text-ink/80 truncate">
+              — {author}
+            </span>
+            {source && (
+              <span className="font-mono text-[1cqw] text-text-muted truncate ml-2">
+                {source}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+    case 'specSheet': {
+      // Studio Spec Sheet Block (Monospace structured metadata table)
+      const client = block.data?.client || 'STUDIO ACNE';
+      const date = block.data?.date || '2026.04.12';
+      const season = block.data?.season || 'FW / 2026';
+      const projectCode = block.data?.projectCode || 'IRN-SPEC-09';
+      const leadDesigner = block.data?.leadDesigner || 'M. BORSCHE';
+
+      const specs = [
+        { label: 'CLIENT', value: client },
+        { label: 'DATE', value: date },
+        { label: 'SEASON', value: season },
+        { label: 'CODE', value: projectCode },
+        { label: 'LEAD', value: leadDesigner },
+      ];
+
+      return (
+        <div 
+          className="w-full h-full flex flex-col justify-between p-3.5 bg-white/90 border border-surface-muted/80 shadow-sm font-mono select-none overflow-hidden"
+          style={radiusStyle}
+        >
+          <div className="flex items-center justify-between border-b border-surface-muted pb-1.5 mb-1 shrink-0">
+            <span className="text-[1.1cqw] font-bold tracking-[0.15em] text-ink uppercase">Spec Sheet</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+          </div>
+          <div className="flex-1 flex flex-col justify-around py-0.5 min-h-0">
+            {specs.map((s, idx) => (
+              <div key={idx} className="flex items-center justify-between text-[1.1cqw] leading-none py-0.5 border-b border-surface-muted/30 last:border-none">
+                <span className="text-text-muted tracking-wider uppercase">{s.label}</span>
+                <span className="font-semibold text-ink tracking-tight truncate max-w-[60%] text-right">{s.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    case 'moodTag': {
+      // Mood Tag Block
+      const tags: string[] = block.data?.tags || ['#Brutalism', '#FW26', '#Editorial', '#RawMaterials', '#Swiss'];
+      const tagStyle = block.data?.style || 'filled';
+
+      return (
+        <div 
+          className="w-full h-full flex flex-wrap gap-1.5 p-3 content-start bg-white/70 border border-surface-muted/60 shadow-sm select-none overflow-y-auto scrollbar-hide"
+          style={radiusStyle}
+        >
+          {tags.map((t, idx) => (
+            <span
+              key={idx}
+              className={`inline-flex items-center px-2.5 py-1 rounded-full font-mono text-[1.1cqw] tracking-tight transition-all ${
+                tagStyle === 'outline'
+                  ? 'border border-ink/30 text-ink bg-transparent'
+                  : 'bg-surface-active/80 text-ink border border-surface-muted shadow-2xs'
+              }`}
+            >
+              {t.startsWith('#') ? t : `#${t}`}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    case 'divider': {
+      // Hairline Divider Block (horizontal or vertical 1px Swiss accent line)
+      const isVertical = block.h > block.w;
+      const lineStyle = block.data?.style || 'solid'; // 'solid' | 'dashed' | 'dotted'
+      const opacity = (block.data?.opacity ?? 60) / 100;
+      const color = block.data?.color || '#111110';
+
+      return (
+        <div className="w-full h-full flex items-center justify-center overflow-hidden p-1 select-none">
+          {isVertical ? (
+            <div 
+              className="h-full"
+              style={{
+                borderRightWidth: '1px',
+                borderRightStyle: lineStyle,
+                borderRightColor: color,
+                opacity,
+              }}
+            />
+          ) : (
+            <div 
+              className="w-full"
+              style={{
+                borderBottomWidth: '1px',
+                borderBottomStyle: lineStyle,
+                borderBottomColor: color,
+                opacity,
+              }}
+            />
+          )}
+        </div>
+      );
+    }
     case 'palette':
       try {
         const data = block.data || { colors: ['#D1D5DB', '#9CA3AF', '#6B7280', '#4B5563', '#374151'], format: 'hex' };
@@ -129,14 +286,6 @@ export default function BlockStatic({
       } catch (e) {
         return null;
       }
-    case 'card':
-      return (
-        <div className="w-full h-full bg-surface border-[1.5px] border-surface-muted shadow-sm p-4 flex flex-col gap-2" style={radiusStyle}>
-          <div className="w-8 h-8 rounded-full bg-surface-active shrink-0" />
-          <div className="w-2/3 h-2 bg-surface-muted rounded-full" />
-          <div className="w-1/2 h-2 bg-surface-muted rounded-full" />
-        </div>
-      );
     default:
       return (
         <div className="w-full h-full bg-surface-active/50 border border-dashed border-surface-muted flex items-center justify-center text-xs text-text-faint font-medium">
