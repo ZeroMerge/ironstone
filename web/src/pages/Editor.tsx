@@ -2881,44 +2881,44 @@ export default function Editor() {
           {/* Left panel toggle */}
           <button
             onClick={() => setLeftOpen(!leftOpen)}
-            className={`p-1 rounded transition-colors ${leftOpen ? 'text-ink bg-ink/10' : 'text-text-muted hover:text-ink hover:bg-ink/5'}`}
+            className={`p-1.5 rounded-md transition-colors ${leftOpen ? 'text-[#575653] bg-black/5' : 'text-[#8C8983] hover:text-[#575653] hover:bg-black/5'}`}
             title="Toggle Pages Panel"
           >
-            <SidebarSimple size={15} weight={leftOpen ? 'fill' : 'regular'} />
+            <SidebarSimple size={15} weight="regular" />
           </button>
           {/* Right panel toggle (mirrored) */}
           <button
             onClick={() => setRightInspectorOpen(!rightInspectorOpen)}
-            className={`p-1 rounded transition-colors ${rightInspectorOpen ? 'text-ink bg-ink/10' : 'text-text-muted hover:text-ink hover:bg-ink/5'}`}
+            className={`p-1.5 rounded-md transition-colors ${rightInspectorOpen ? 'text-[#575653] bg-black/5' : 'text-[#8C8983] hover:text-[#575653] hover:bg-black/5'}`}
             title="Toggle Inspector Panel"
             style={{ transform: 'scaleX(-1)' }}
           >
-            <SidebarSimple size={15} weight={rightInspectorOpen ? 'fill' : 'regular'} />
+            <SidebarSimple size={15} weight="regular" />
           </button>
 
           <div className="w-px h-4 bg-surface-muted mx-0.5" />
 
-          <span className="text-text-muted">{selectedId ? 'Block Properties' : 'Document Canvas'}</span>
+          <span className="text-[#8C8983] font-medium">{selectedId ? 'Block Properties' : 'Document Canvas'}</span>
 
           {!selectedId && (
-            <div className="flex items-center bg-ink/5 rounded-md p-0.5 relative">
+            <div className="flex items-center bg-black/5 rounded-md p-0.5 relative">
               {/* Sliding active pill */}
               <div
-                className={`absolute inset-y-0.5 w-[26px] bg-white rounded-[4px] shadow-sm transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[28px]' : 'left-0.5'}`}
+                className={`absolute inset-y-0.5 w-[26px] bg-white rounded-[4px] shadow-xs transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[28px]' : 'left-0.5'}`}
               />
               <button
                 onClick={() => setViewMode('focus')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode !== 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-200 ${viewMode !== 'overview' ? 'text-[#44423E]' : 'text-[#8C8983] hover:text-[#575653]'}`}
                 title="Focus View"
               >
-                <FrameCorners size={13} weight={viewMode !== 'overview' ? 'fill' : 'regular'} />
+                <FrameCorners size={13} weight="regular" />
               </button>
               <button
                 onClick={() => setViewMode('overview')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode === 'overview' ? 'text-ink' : 'text-text-muted hover:text-ink'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-200 ${viewMode === 'overview' ? 'text-[#44423E]' : 'text-[#8C8983] hover:text-[#575653]'}`}
                 title="Grid Overview"
               >
-                <SquaresFour size={13} weight={viewMode === 'overview' ? 'fill' : 'regular'} />
+                <SquaresFour size={13} weight="regular" />
               </button>
             </div>
           )}
