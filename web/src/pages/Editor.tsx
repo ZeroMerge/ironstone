@@ -2029,20 +2029,22 @@ export default function Editor() {
                             </>
                           )}
 
-                          {/* Floating Hover Action Pill (Small, inconspicuous, disappears when moving, reappears on rest) */}
+                          {/* Floating Hover Action Pill (Clean white studio capsule, flips inside on top row, disappears when moving, reappears on rest) */}
                           {selected && !isInteracting && (
                             <div
                               data-action-pill="true"
                               onPointerDown={(e) => e.stopPropagation()}
-                              className="absolute -top-9 left-1/2 -translate-x-1/2 bg-[#1C1C1E]/95 text-white/90 backdrop-blur-md px-1.5 py-0.5 rounded-full shadow-lg border border-white/10 flex items-center gap-1 z-40 select-none pointer-events-auto"
+                              className={`absolute left-1/2 -translate-x-1/2 ${
+                                b.y <= 1 ? 'top-2.5' : '-top-10'
+                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-40 select-none pointer-events-auto transition-all duration-150`}
                             >
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   duplicateSelected();
                                 }}
-                                title="Duplicate Block"
-                                className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                                title="Duplicate Block (Ctrl+D)"
+                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
                               >
                                 <Copy size={13} strokeWidth={2} />
                               </button>
@@ -2052,7 +2054,7 @@ export default function Editor() {
                                   bringForward();
                                 }}
                                 title="Bring to Front"
-                                className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
                               >
                                 <ArrowUp size={13} strokeWidth={2} />
                               </button>
@@ -2063,12 +2065,12 @@ export default function Editor() {
                                     setPickerBlockId(b.id);
                                   }}
                                   title="Replace Image"
-                                  className="p-1 hover:bg-white/20 hover:text-white rounded-full transition-colors flex items-center justify-center text-white/80"
+                                  className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
                                 >
                                   <Upload size={13} strokeWidth={2} />
                                 </button>
                               )}
-                              <div className="w-px h-3 bg-white/20 mx-0.5" />
+                              <div className="w-px h-3.5 bg-surface-muted mx-0.5" />
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2077,8 +2079,8 @@ export default function Editor() {
                                     setSelectedId(null);
                                   }
                                 }}
-                                title="Delete Block"
-                                className="p-1 hover:bg-red-500/80 hover:text-white text-white/70 rounded-full transition-colors flex items-center justify-center"
+                                title="Delete Block (Del)"
+                                className="p-1 hover:bg-red-50 hover:text-danger text-text-muted/80 rounded-full transition-colors flex items-center justify-center"
                               >
                                 <Trash2 size={13} strokeWidth={2} />
                               </button>

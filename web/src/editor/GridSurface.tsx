@@ -44,7 +44,7 @@ export default function GridSurface({
 
   return (
     <div
-      className={`relative transition-colors duration-300 rounded-sm overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_1px_rgba(0,0,0,0.2)] ${className}`}
+      className={`relative transition-colors duration-300 rounded-sm shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_1px_rgba(0,0,0,0.2)] ${className}`}
       style={{
         aspectRatio: aspectFor(orientation),
         containerType: 'inline-size',
