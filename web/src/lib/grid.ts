@@ -117,21 +117,29 @@ export function templateBlocks(orientation: Orientation): Block[] {
   ) => blocks.push({ id: uid(), type, x, y, w, h, content, style });
 
   if (orientation === 'landscape') {
-    push('title', 0, 0, 28, 4, 'Moodboard Title');
-    push('subtitle', 0, 4, 28, 3, 'Visual Direction & References');
-    push('text', 30, 0, 18, 7, 'Describe the core aesthetic tone, texture, and concept notes here.');
-    push('image', 0, 8, 24, 12);
-    push('image', 24, 8, 24, 12);
-    push('image', 0, 20, 24, 12);
-    push('image', 24, 20, 24, 12);
+    // 48 columns x 32 rows
+    // Top Section (Row 2 to 8 = height 6)
+    push('title', 2, 2, 18, 4, 'Moodboard Title');
+    push('subtitle', 2, 6, 18, 2, 'Visual Direction & References');
+    push('text', 22, 2, 24, 6, 'Describe the core aesthetic tone, texture, and concept notes here. Use this space to establish the conceptual foundation of the project.');
+    
+    // Bottom Section: Images (Row 10 to 30 = height 20)
+    push('image', 2, 10, 22, 20);   // Hero image (left)
+    push('image', 26, 10, 20, 9);   // Top right
+    push('image', 26, 21, 9, 9);    // Bottom right 1
+    push('image', 37, 21, 9, 9);    // Bottom right 2
   } else {
-    push('title', 0, 0, 48, 4, 'Moodboard Title');
-    push('subtitle', 0, 4, 48, 3, 'Visual Direction & References');
-    push('text', 0, 7, 48, 5, 'Describe the core aesthetic tone, texture, and concept notes here.');
-    push('image', 0, 13, 24, 17);
-    push('image', 24, 13, 24, 17);
-    push('image', 0, 30, 24, 18);
-    push('image', 24, 30, 24, 18);
+    // 48 columns x 48 rows
+    // Top Section (Row 2 to 14)
+    push('title', 2, 2, 44, 4, 'Moodboard Title');
+    push('subtitle', 2, 6, 44, 2, 'Visual Direction & References');
+    push('text', 2, 9, 44, 4, 'Describe the core aesthetic tone, texture, and concept notes here. Use this space to establish the conceptual foundation of the project.');
+
+    // Bottom Section: Images (Row 15 to 46 = height 31)
+    push('image', 2, 15, 44, 15);   // Hero top
+    push('image', 2, 32, 14, 14);   // Bottom left
+    push('image', 17, 32, 14, 14);  // Bottom middle
+    push('image', 32, 32, 14, 14);  // Bottom right
   }
   return blocks;
 }

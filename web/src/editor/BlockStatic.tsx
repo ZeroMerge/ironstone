@@ -22,8 +22,8 @@ export default function BlockStatic({
   switch (block.type) {
     case 'title':
       return (
-        <div className="w-full h-full flex items-end overflow-hidden" style={{ textAlign: block.style?.textAlign || 'left' }}>
-          <span className="font-extrabold tracking-tight leading-none text-[5cqw]">
+        <div className="w-full h-full flex items-start overflow-hidden" style={{ textAlign: block.style?.textAlign || 'left' }}>
+          <span className="font-extrabold tracking-tight leading-tight text-[5cqw]">
             {block.content || 'Untitled Moodboard'}
           </span>
         </div>
