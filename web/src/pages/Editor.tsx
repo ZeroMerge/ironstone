@@ -2116,14 +2116,14 @@ export default function Editor() {
   const exportDropdownJsx = (
     <div
       ref={exportDropdownRef}
-      className="fixed top-16 right-4 sm:right-6 w-[340px] sm:w-[360px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)] overflow-y-auto bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.25)] p-5 z-[9999] flex flex-col gap-4 text-ink select-none animate-in fade-in zoom-in-95 duration-150 scrollbar-hover"
+      className="fixed top-16 right-4 sm:right-6 w-[340px] sm:w-[360px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)] overflow-y-auto !bg-white rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.2)] p-5 z-[9999] flex flex-col gap-4 text-[#111110] select-none animate-in fade-in zoom-in-95 duration-150 scrollbar-hover"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-ink">Download</span>
+        <span className="text-sm font-bold text-[#111110]">Download</span>
         <button
           onClick={() => setExportOpen(false)}
-          className="w-7 h-7 rounded-full flex items-center justify-center text-text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-[#8C8983] hover:text-[#111110] hover:bg-[#F5F5F3] transition-colors cursor-pointer"
         >
           <X size={15} />
         </button>
@@ -2131,25 +2131,25 @@ export default function Editor() {
 
       {/* File Name */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-semibold text-text-muted">File name</label>
+        <label className="text-[11px] font-semibold text-[#8C8983]">File name</label>
         <input
           type="text"
           value={exportFileName}
           onChange={(e) => setExportFileName(e.target.value)}
           placeholder={project?.name || 'Moodboard'}
-          className="w-full px-3 py-2 text-xs rounded-xl bg-surface-muted/60 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-accent/30 text-ink font-medium transition-all"
+          className="w-full px-3 py-2 text-xs rounded-xl bg-[#F5F5F3] focus:bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 text-[#111110] font-medium transition-all"
         />
       </div>
 
       {/* File Type Display */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-[11px] font-semibold text-text-muted">File type</label>
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-surface-muted/60">
+        <label className="text-[11px] font-semibold text-[#8C8983]">File type</label>
+        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#F5F5F3]">
           <div className="flex items-center gap-2.5">
             <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
               <FileText size={13} strokeWidth={2.2} />
             </div>
-            <span className="text-xs font-semibold text-ink">PDF Document</span>
+            <span className="text-xs font-semibold text-[#111110]">PDF Document</span>
           </div>
           <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent">
             Suggested
@@ -2160,7 +2160,7 @@ export default function Editor() {
       {/* Select Pages (Canva Style) */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label className="text-[11px] font-semibold text-text-muted">Select pages</label>
+          <label className="text-[11px] font-semibold text-[#8C8983]">Select pages</label>
           {exportPageScope === 'custom' && (
             <button
               onClick={() => {
@@ -2178,13 +2178,13 @@ export default function Editor() {
         </div>
 
         {/* 3-Way Segmented Control */}
-        <div className="flex items-center bg-surface-muted/60 p-1 rounded-xl">
+        <div className="flex items-center bg-[#F5F5F3] p-1 rounded-xl">
           <button
             onClick={() => setExportPageScope('all')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               exportPageScope === 'all'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-text-muted hover:text-ink'
+                ? 'bg-white text-[#111110] shadow-sm'
+                : 'text-[#8C8983] hover:text-[#111110]'
             }`}
           >
             All ({pages.length})
@@ -2194,8 +2194,8 @@ export default function Editor() {
             onClick={() => setExportPageScope('current')}
             className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
               exportPageScope === 'current'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-text-muted hover:text-ink'
+                ? 'bg-white text-[#111110] shadow-sm'
+                : 'text-[#8C8983] hover:text-[#111110]'
             }`}
           >
             This page ({pages.findIndex(p => p.id === activePageId) + 1 || 1})
@@ -2210,8 +2210,8 @@ export default function Editor() {
             }}
             className={`flex-1 py-1.5 text-xs font-medium rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
               exportPageScope === 'custom'
-                ? 'bg-surface text-ink shadow-sm'
-                : 'text-text-muted hover:text-ink'
+                ? 'bg-white text-[#111110] shadow-sm'
+                : 'text-[#8C8983] hover:text-[#111110]'
             }`}
           >
             <span>Custom</span>
@@ -2237,7 +2237,7 @@ export default function Editor() {
                   className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-accent/10 text-accent font-bold ring-2 ring-accent'
-                      : 'bg-surface-muted/50 text-text-muted hover:bg-surface-muted hover:text-ink'
+                      : 'bg-[#F5F5F3] text-[#8C8983] hover:bg-[#EBEBEA] hover:text-[#111110]'
                   }`}
                 >
                   <span className="text-xs font-mono font-bold">{idx + 1}</span>
@@ -2276,7 +2276,7 @@ export default function Editor() {
           </div>
           <button
             onClick={() => setExportPhase({ kind: 'idle' })}
-            className="text-[11px] text-text-muted hover:text-ink transition-colors cursor-pointer"
+            className="text-[11px] text-[#8C8983] hover:text-[#111110] transition-colors cursor-pointer"
           >
             Download again
           </button>
@@ -2289,7 +2289,7 @@ export default function Editor() {
           <span className="text-[10px] text-red-700">{exportPhase.message}</span>
           <button
             onClick={() => setExportPhase({ kind: 'idle' })}
-            className="text-[10px] text-ink underline font-medium mt-0.5 cursor-pointer"
+            className="text-[10px] text-[#111110] underline font-medium mt-0.5 cursor-pointer"
           >
             Try again
           </button>
@@ -2297,6 +2297,7 @@ export default function Editor() {
       )}
     </div>
   );
+
 
   // ── Right Sidebar Assembly ─────────────────────────────────────────────────
   const inspectorTabs: { id: 'design' | 'components' | 'assets' | 'layout'; icon: React.ReactNode; title: string }[] = [
