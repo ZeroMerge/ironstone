@@ -515,7 +515,7 @@ export default function Editor() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hover px-2 pb-3">
+      <div className="flex-1 flex flex-col gap-2 overflow-y-auto scrollbar-hover px-2 pt-1 pb-3">
         {pages.map((p, i) => (
           <div
             key={p.id}
@@ -524,9 +524,9 @@ export default function Editor() {
               setSelectedId(null);
               if (viewMode === 'overview') setViewMode('focus');
             }}
-            className={`group relative cursor-pointer rounded-sm p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-surface shadow-sm ring-[1.5px] ring-accent" : "hover:bg-surface/50"}`}
+            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-black/5 shadow-sm ring-1 ring-black/10" : "hover:bg-black/5"}`}
           >
-            <div className="pointer-events-none rounded overflow-hidden shadow-sm border-[1.5px] border-surface-muted bg-white">
+            <div className="pointer-events-none rounded overflow-hidden shadow-sm border-[1.5px] border-surface-muted bg-white relative">
               <GridSurface
                 orientation={project.orientation}
                 styles={project.styles}
@@ -538,6 +538,7 @@ export default function Editor() {
                   </div>
                 ))}
               </GridSurface>
+              <div className={`absolute inset-0 transition-colors ${activePageId === p.id && viewMode === 'focus' ? 'bg-black/[0.02]' : 'bg-black/0 group-hover:bg-black/[0.04]'}`} />
             </div>
             <div className="mt-1.5 flex items-center justify-between text-xs text-text-muted">
               <span className="font-semibold">Page {i + 1}</span>
