@@ -2211,7 +2211,10 @@ export default function Editor() {
                         key={b.id}
                         id={`block-${b.id}`}
                         data-block="true"
-                        style={blockStyle(b, rows)}
+                        style={{
+                          ...blockStyle(b, rows),
+                          zIndex: isPrimary ? 999 : (selected ? 100 : (b.zIndex ?? 1)),
+                        }}
                         onPointerDown={(e) => onBlockPointerDown(e, b)}
                         onDoubleClick={() => {
                           if (b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption') {
@@ -2355,7 +2358,7 @@ export default function Editor() {
                                   : (b.x + b.w > COLS - 4 
                                       ? 'right-2 left-auto translate-x-0' 
                                       : 'left-1/2 -translate-x-1/2')
-                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-40 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
+                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-50 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
                             >
                               <button
                                 onClick={(e) => {
