@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2 } from 'lucide-react';
+import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop } from 'lucide-react';
 import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
@@ -15,6 +15,7 @@ import {
 import { extractPalette } from '../lib/palette';
 import PalettePopover from '../editor/PalettePopover';
 import StudioStyleBar from '../editor/StudioStyleBar';
+import CropOverlay from '../editor/CropOverlay';
 import type { Block, ImageRec, Page, Project, ProjectStyles } from '../lib/types';
 import { applyAutoLayout, type LayoutEngineType, type LayoutScope } from '../lib/layoutEngine';
 import {
@@ -37,18 +38,49 @@ import Modal from '../components/Modal';
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 type DragState =
-  | { mode: 'move'; blockId: string; startX: number; startY: number; origX: number; origY: number }
+  | { 
+      mode: 'move'; 
+      blockId: string; 
+      startX: number; 
+      startY: number; 
+      origX: number; 
+      origY: number;
+      group?: { id: string; origX: number; origY: number }[];
+    }
   | {
-    mode: 'resize';
-    direction: ResizeDirection;
-    blockId: string;
-    startX: number;
-    startY: number;
-    origX: number;
-    origY: number;
-    origW: number;
-    origH: number;
-  };
+      mode: 'resize';
+      direction: ResizeDirection;
+      blockId: string;
+      startX: number;
+      startY: number;
+      origX: number;
+      origY: number;
+      origW: number;
+      origH: number;
+    };
+
+function resolvePushCollisions(movingBlock: Block, allBlocks: Block[], maxRows: number): Block[] {
+  const result = allBlocks.map((b) => (b.id === movingBlock.id ? movingBlock : { ...b }));
+  let changed = true;
+  let iterations = 0;
+  while (changed && iterations < 8) {
+    changed = false;
+    iterations++;
+    for (const b of result) {
+      if (b.id === movingBlock.id) continue;
+      const overlapX = !(movingBlock.x + movingBlock.w <= b.x || b.x + b.w <= movingBlock.x);
+      const overlapY = !(movingBlock.y + movingBlock.h <= b.y || b.y + b.h <= movingBlock.y);
+      if (overlapX && overlapY) {
+        const newY = Math.min(maxRows - b.h, movingBlock.y + movingBlock.h);
+        if (newY !== b.y) {
+          b.y = newY;
+          changed = true;
+        }
+      }
+    }
+  }
+  return result;
+}
 
 function findFreeSpot(blocks: Block[], rows: number, w: number, h: number): { x: number; y: number } {
   for (let y = 0; y <= rows - h; y++) {
@@ -67,7 +99,11 @@ export default function Editor() {
   const [loading, setLoading] = useState(true);
   const [images, setImages] = useState<ImageRec[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const selectedId = selectedIds[0] ?? null;
+  const setSelectedId = useCallback((id: string | null) => {
+    setSelectedIds(id ? [id] : []);
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'focus' | 'overview' | 'zen'>('focus');
   const [rightInspectorOpen, setRightInspectorOpen] = useState(true);
@@ -84,6 +120,56 @@ export default function Editor() {
   const [activeEngine, setActiveEngine] = useState<LayoutEngineType>('bento');
   const [physicsMode, setPhysicsMode] = useState<'free' | 'swap' | 'push'>('free');
   const [isLayoutRunning, setIsLayoutRunning] = useState<boolean>(false);
+  const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
+  const [croppingBlockId, setCroppingBlockId] = useState<string | null>(null);
+  const [marqueeBox, setMarqueeBox] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const marqueeStartRef = useRef<{ clientX: number; clientY: number } | null>(null);
+
+  // 30-Step Undo / Redo History Stack
+  interface HistoryStep {
+    pages: Page[];
+    styles?: ProjectStyles;
+  }
+  const [historyStack, setHistoryStack] = useState<HistoryStep[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+
+  const pushHistory = useCallback((newPages: Page[], newStyles?: ProjectStyles) => {
+    setHistoryStack(prev => {
+      const sliced = prev.slice(0, historyIndex + 1);
+      const snapshot: HistoryStep = {
+        pages: JSON.parse(JSON.stringify(newPages)),
+        styles: newStyles ? { ...newStyles } : undefined,
+      };
+      const updated = [...sliced, snapshot];
+      if (updated.length > 30) updated.shift();
+      return updated;
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 29));
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0 && historyStack.length > 0) {
+      const prevStep = historyStack[historyIndex - 1];
+      setPages(prevStep.pages);
+      if (prevStep.styles && project) {
+        patchStyles(prevStep.styles);
+      }
+      setHistoryIndex(historyIndex - 1);
+      prevStep.pages.forEach(p => void putPage(p));
+    }
+  }, [historyIndex, historyStack, project]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < historyStack.length - 1) {
+      const nextStep = historyStack[historyIndex + 1];
+      setPages(nextStep.pages);
+      if (nextStep.styles && project) {
+        patchStyles(nextStep.styles);
+      }
+      setHistoryIndex(historyIndex + 1);
+      nextStep.pages.forEach(p => void putPage(p));
+    }
+  }, [historyIndex, historyStack, project]);
 
   useEffect(() => {
     function handlePointerMove(e: PointerEvent) {
@@ -221,6 +307,31 @@ export default function Editor() {
   // Keyboard shortcut: Delete selected block
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Undo / Redo Shortcuts (Ctrl+Z, Cmd+Z, Ctrl+Y, Cmd+Shift+Z)
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.key.toLowerCase() === 'z') {
+        const target = e.target as HTMLElement | null;
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      if (isMod && e.key.toLowerCase() === 'y') {
+        const target = e.target as HTMLElement | null;
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable) {
+          return;
+        }
+        e.preventDefault();
+        redo();
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const target = e.target as HTMLElement | null;
         if (
@@ -234,14 +345,16 @@ export default function Editor() {
         ) {
           return;
         }
-        if (!selectedId || !activePageId) return;
+        if (selectedIds.length === 0 || !activePageId) return;
         setPages((prev) => {
           const pg = prev.find((p) => p.id === activePageId);
           if (!pg) return prev;
-          const updated = { ...pg, blocks: pg.blocks.filter((b) => b.id !== selectedId) };
+          const updated = { ...pg, blocks: pg.blocks.filter((b) => !selectedIds.includes(b.id)) };
           persistPage(updated);
-          setSelectedId(null);
-          return prev.map((p) => (p.id === activePageId ? updated : p));
+          setSelectedIds([]);
+          const newPages = prev.map((p) => (p.id === activePageId ? updated : p));
+          pushHistory(newPages, project?.styles);
+          return newPages;
         });
       }
       if (e.key === 'Escape') {
@@ -345,9 +458,31 @@ export default function Editor() {
   function onBlockPointerDown(e: React.PointerEvent, block: Block) {
     if (editingId === block.id) return;
     if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
+    if ((e.target as HTMLElement).closest('[data-action-pill]')) return;
 
     e.preventDefault();
-    setSelectedId(block.id);
+    e.stopPropagation();
+
+    // Shift-click toggles selection
+    let nextSelectedIds: string[];
+    if (e.shiftKey) {
+      nextSelectedIds = selectedIds.includes(block.id)
+        ? selectedIds.filter((id) => id !== block.id)
+        : [...selectedIds, block.id];
+    } else {
+      nextSelectedIds = selectedIds.includes(block.id) ? selectedIds : [block.id];
+    }
+    setSelectedIds(nextSelectedIds);
+
+    // Capture starting coordinates for multi-block drag
+    const targets = nextSelectedIds.includes(block.id) && nextSelectedIds.length > 1
+      ? nextSelectedIds
+      : [block.id];
+
+    const groupOrig = activePage?.blocks
+      .filter((b) => targets.includes(b.id))
+      .map((b) => ({ id: b.id, origX: b.x, origY: b.y })) || [];
+
     dragRef.current = {
       mode: 'move',
       blockId: block.id,
@@ -355,6 +490,7 @@ export default function Editor() {
       startY: e.clientY,
       origX: block.x,
       origY: block.y,
+      group: groupOrig,
     };
     setIsInteracting(true);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -388,15 +524,65 @@ export default function Editor() {
     if (drag.mode === 'move') {
       const dx = Math.round((e.clientX - drag.startX) / cell.w);
       const dy = Math.round((e.clientY - drag.startY) / cell.h);
-      const next = clampBlock({ ...block, x: drag.origX + dx, y: drag.origY + dy }, rows);
-      if (next.x !== block.x || next.y !== block.y) {
+
+      if (drag.group && drag.group.length > 1) {
+        // Multi-block synchronous movement
         setPages((prev) =>
-          prev.map((p) =>
-            p.id === activePage.id
-              ? { ...p, blocks: p.blocks.map((b) => (b.id === block.id ? next : b)) }
-              : p
-          )
+          prev.map((p) => {
+            if (p.id !== activePage.id) return p;
+            const updated = p.blocks.map((b) => {
+              const item = drag.group?.find((g) => g.id === b.id);
+              if (item) {
+                return clampBlock({ ...b, x: item.origX + dx, y: item.origY + dy }, rows);
+              }
+              return b;
+            });
+            return { ...p, blocks: updated };
+          })
         );
+      } else {
+        const next = clampBlock({ ...block, x: drag.origX + dx, y: drag.origY + dy }, rows);
+
+        // Physics Mode 1: Drag-to-Swap
+        if (physicsMode === 'swap') {
+          const centerX = next.x + next.w / 2;
+          const centerY = next.y + next.h / 2;
+          const target = activePage.blocks.find(
+            (b) =>
+              b.id !== block.id &&
+              centerX >= b.x &&
+              centerX < b.x + b.w &&
+              centerY >= b.y &&
+              centerY < b.y + b.h
+          );
+          setSwapTargetId(target ? target.id : null);
+          if (next.x !== block.x || next.y !== block.y) {
+            setPages((prev) =>
+              prev.map((p) =>
+                p.id === activePage.id
+                  ? { ...p, blocks: p.blocks.map((b) => (b.id === block.id ? next : b)) }
+                  : p
+              )
+            );
+          }
+        } else if (physicsMode === 'push') {
+          // Physics Mode 2: Collision Push Mechanics
+          const resolved = resolvePushCollisions(next, activePage.blocks, rows);
+          setPages((prev) =>
+            prev.map((p) => (p.id === activePage.id ? { ...p, blocks: resolved } : p))
+          );
+        } else {
+          // Physics Mode 3: Free placement
+          if (next.x !== block.x || next.y !== block.y) {
+            setPages((prev) =>
+              prev.map((p) =>
+                p.id === activePage.id
+                  ? { ...p, blocks: p.blocks.map((b) => (b.id === block.id ? next : b)) }
+                  : p
+              )
+            );
+          }
+        }
       }
     } else {
       const { minW, minH } = getMinFootprint(block.type);
@@ -447,8 +633,34 @@ export default function Editor() {
     setIsInteracting(false);
     const drag = dragRef.current;
     if (drag && activePage) {
-      const current = pages.find((p) => p.id === activePage.id);
-      if (current) void putPage(current);
+      if (physicsMode === 'swap' && swapTargetId && drag.mode === 'move') {
+        const targetBlock = activePage.blocks.find((b) => b.id === swapTargetId);
+        if (targetBlock) {
+          const blockAOrig = { x: drag.origX, y: drag.origY };
+          const blockBOrig = { x: targetBlock.x, y: targetBlock.y };
+          setPages((prev) =>
+            prev.map((p) => {
+              if (p.id !== activePage.id) return p;
+              const updated = p.blocks.map((b) => {
+                if (b.id === drag.blockId) return { ...b, x: blockBOrig.x, y: blockBOrig.y };
+                if (b.id === swapTargetId) return { ...b, x: blockAOrig.x, y: blockAOrig.y };
+                return b;
+              });
+              const pg = { ...p, blocks: updated };
+              void putPage(pg);
+              pushHistory(prev.map((item) => (item.id === pg.id ? pg : item)), project?.styles);
+              return pg;
+            })
+          );
+        }
+        setSwapTargetId(null);
+      } else {
+        const current = pages.find((p) => p.id === activePage.id);
+        if (current) {
+          void putPage(current);
+          pushHistory(pages, project?.styles);
+        }
+      }
     }
     dragRef.current = null;
   }
@@ -668,6 +880,7 @@ export default function Editor() {
     const updated = { ...project, styles: { ...project.styles, ...patch } };
     setProject(updated);
     await updateProject(updated);
+    pushHistory(pages, updated.styles);
   }
 
   // ── Inspector sub-components ──────────────────────────────────────────────
@@ -1478,6 +1691,7 @@ export default function Editor() {
           const copy = [...prev];
           copy.splice(idx, 1, first, ...rest);
           Promise.all([putPage(first), ...rest.map(p => putPage(p))]);
+          pushHistory(copy, project?.styles);
           return copy;
         });
         setSelectedId(null);
@@ -1788,31 +2002,99 @@ export default function Editor() {
     <>
       <section 
         className="flex-1 overflow-auto scrollbar-hide" 
-        onPointerMove={onPointerMove} 
-        onPointerUp={onPointerUp}
+        onPointerMove={(e) => {
+          onPointerMove(e);
+          if (marqueeStartRef.current) {
+            const dx = e.clientX - marqueeStartRef.current.clientX;
+            const dy = e.clientY - marqueeStartRef.current.clientY;
+            if (Math.hypot(dx, dy) > 5) {
+              const x1 = Math.min(e.clientX, marqueeStartRef.current.clientX);
+              const y1 = Math.min(e.clientY, marqueeStartRef.current.clientY);
+              const x2 = Math.max(e.clientX, marqueeStartRef.current.clientX);
+              const y2 = Math.max(e.clientY, marqueeStartRef.current.clientY);
+              setMarqueeBox({ x1, y1, x2, y2 });
+
+              // Hit test with page blocks
+              const hitIds: string[] = [];
+              activePage?.blocks.forEach((b) => {
+                const el = document.getElementById(`block-${b.id}`);
+                if (el) {
+                  const r = el.getBoundingClientRect();
+                  const hit = !(x2 < r.left || r.right < x1 || y2 < r.top || r.bottom < y1);
+                  if (hit) hitIds.push(b.id);
+                }
+              });
+              setSelectedIds(hitIds);
+            }
+          }
+        }} 
+        onPointerUp={(e) => {
+          onPointerUp();
+          if (marqueeStartRef.current) {
+            marqueeStartRef.current = null;
+            setMarqueeBox(null);
+          }
+        }}
         onPointerDown={(e) => {
           const target = e.target as HTMLElement;
           if (!target.closest('[data-block="true"]') && !target.closest('[data-text-toolbar="true"]') && !target.closest('[data-action-pill="true"]')) {
-            setSelectedId(null);
+            setSelectedIds([]);
             setEditingId(null);
+            setCroppingBlockId(null);
             window.getSelection()?.removeAllRanges();
+            marqueeStartRef.current = { clientX: e.clientX, clientY: e.clientY };
           }
         }}
       >
+        {/* Marquee Selection Rectangle */}
+        {marqueeBox && (
+          <div
+            className="fixed pointer-events-none z-50 border border-accent bg-accent/15 rounded-xs"
+            style={{
+              left: marqueeBox.x1,
+              top: marqueeBox.y1,
+              width: marqueeBox.x2 - marqueeBox.x1,
+              height: marqueeBox.y2 - marqueeBox.y1,
+            }}
+          />
+        )}
+
         <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
           {/* Top Studio Controls Bar (Mounted & Fully Functional) */}
           {project && (
             <StudioStyleBar
               styles={project.styles ?? {}}
-              onChange={patchStyles}
+              onChange={(newStyles) => {
+                patchStyles(newStyles);
+                pushHistory(pages, newStyles);
+              }}
               physicsMode={physicsMode}
               onPhysicsModeChange={setPhysicsMode}
+              onUndo={undo}
+              onRedo={redo}
+              canUndo={historyIndex > 0}
+              canRedo={historyIndex < historyStack.length - 1}
               onEyedropper={async () => {
                 if ('EyeDropper' in window) {
                   try {
                     const eyeDropper = new (window as any).EyeDropper();
                     const result = await eyeDropper.open();
                     if (result?.sRGBHex) {
+                      const color = result.sRGBHex;
+                      if (activePage) {
+                        const paletteBlock = activePage.blocks.find(b => b.type === 'palette');
+                        if (paletteBlock) {
+                          const colors = paletteBlock.data?.colors || ['#111110', '#8C8983', '#E6E4DF', '#FFFFFF'];
+                          if (!colors.includes(color)) {
+                            const updated = {
+                              ...paletteBlock,
+                              data: { ...paletteBlock.data, colors: [...colors.slice(0, 5), color] }
+                            };
+                            updateBlock(activePage.id, updated);
+                            return;
+                          }
+                        }
+                      }
                       patchStyles({ canvasTone: 'studio' });
                     }
                   } catch (e) {}
@@ -1820,9 +2102,6 @@ export default function Editor() {
               }}
             />
           )}
-
-
-
 
           {loading ? (
             <div className="flex items-center justify-center h-64 text-sm font-semibold text-text-muted">
@@ -1922,13 +2201,15 @@ export default function Editor() {
                   )}
 
                   {activePage.blocks.map((b) => {
-                    const selected = selectedId === b.id;
+                    const selected = selectedIds.includes(b.id);
+                    const isPrimary = selectedId === b.id;
                     const editing = editingId === b.id;
                     const isZen = viewMode === 'zen';
 
                     return (
                       <div
                         key={b.id}
+                        id={`block-${b.id}`}
                         data-block="true"
                         style={blockStyle(b, rows)}
                         onPointerDown={(e) => onBlockPointerDown(e, b)}
@@ -1937,7 +2218,7 @@ export default function Editor() {
                             setEditingId(b.id);
                             setSelectedId(b.id);
                           } else if (b.type === 'image' || b.type === 'card') {
-                            setPickerBlockId(b.id);
+                            setCroppingBlockId(b.id);
                             setSelectedId(b.id);
                           }
                         }}
@@ -1947,12 +2228,33 @@ export default function Editor() {
                           }`}
                       >
                         <div className="relative w-full h-full">
+                          {/* Swap Target Drop Ring (Kinetic physics highlight) */}
+                          {swapTargetId === b.id && (
+                            <div className="absolute inset-0 ring-2 ring-accent ring-offset-2 ring-offset-white animate-pulse z-35 pointer-events-none rounded-sm" />
+                          )}
+
                           {/* Active Bounding Box (Clean Figma-grade 1.5px border, zero ring-offset) */}
                           {selected && (
                             <div
                               className={`absolute inset-0 border-[1.5px] ${
                                 editing ? 'border-[#0D99FF]/40 border-dashed' : 'border-[#0D99FF]'
                               } pointer-events-none z-20 transition-colors`}
+                            />
+                          )}
+
+                          {/* Crop / Focal Point Overlay */}
+                          {croppingBlockId === b.id && (
+                            <CropOverlay
+                              block={b}
+                              imageUrl={objectUrlFor(b.content, images.find(img => img.id === b.content)?.blob || new Blob())}
+                              onSave={(crop) => {
+                                if (activePage) {
+                                  const updated = { ...b, data: { ...b.data, crop } };
+                                  updateBlock(activePage.id, updated);
+                                  pushHistory(pages.map(p => p.id === activePage.id ? { ...p, blocks: p.blocks.map(item => item.id === b.id ? updated : item) } : p), project?.styles);
+                                }
+                              }}
+                              onClose={() => setCroppingBlockId(null)}
                             />
                           )}
 
@@ -2041,7 +2343,7 @@ export default function Editor() {
                           )}
 
                           {/* Floating Hover Action Pill (Clean white studio capsule, boundary-aware on edges, disappears when moving, reappears on rest) */}
-                          {selected && !isInteracting && (
+                          {isPrimary && !isInteracting && (
                             <div
                               data-action-pill="true"
                               onPointerDown={(e) => e.stopPropagation()}
@@ -2076,16 +2378,28 @@ export default function Editor() {
                                 <ArrowUp size={13} strokeWidth={2} />
                               </button>
                               {(b.type === 'image' || b.type === 'card') && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPickerBlockId(b.id);
-                                  }}
-                                  title="Replace Image"
-                                  className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
-                                >
-                                  <Upload size={13} strokeWidth={2} />
-                                </button>
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCroppingBlockId(b.id);
+                                    }}
+                                    title="Crop & Focal Point"
+                                    className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                                  >
+                                    <Crop size={13} strokeWidth={2} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPickerBlockId(b.id);
+                                    }}
+                                    title="Replace Image"
+                                    className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                                  >
+                                    <Upload size={13} strokeWidth={2} />
+                                  </button>
+                                </>
                               )}
                               <div className="w-px h-3.5 bg-surface-muted mx-0.5" />
                               <button

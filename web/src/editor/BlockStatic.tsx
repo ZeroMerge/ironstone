@@ -101,23 +101,34 @@ export default function BlockStatic({
         </div>
       );
     }
-    case 'image':
+    case 'image': {
+      const crop = block.data?.crop;
+      const objectPosition = crop ? `${crop.x}% ${crop.y}%` : undefined;
+      const transform = crop && crop.zoom && crop.zoom !== 1 ? `scale(${crop.zoom})` : undefined;
+
       return imageUrl ? (
-        <img
-          src={imageUrl}
-          className="w-full h-full object-cover select-none pointer-events-none"
-          style={radiusStyle}
-          alt=""
-        />
+        <div className="w-full h-full overflow-hidden" style={radiusStyle}>
+          <img
+            src={imageUrl}
+            className="w-full h-full object-cover select-none pointer-events-none transition-transform duration-100"
+            style={{
+              objectPosition,
+              transform,
+            }}
+            alt=""
+          />
+        </div>
       ) : (
         <div className="w-full h-full bg-surface-active flex items-center justify-center text-text-faint text-xs font-medium" style={radiusStyle}>
           No image
         </div>
       );
+    }
     case 'card': {
       // Composite Image + Locked Caption Container
       const subPadding = block.data?.padding ?? 10;
       const captionText = block.data?.caption ?? 'FIG. 01 — ARCHIVAL REFERENCE / SS26';
+      const crop = block.data?.crop;
       return (
         <div 
           className="w-full h-full bg-white shadow-sm border border-surface-muted/80 flex flex-col overflow-hidden select-none"
@@ -127,7 +138,11 @@ export default function BlockStatic({
             {imageUrl ? (
               <img
                 src={imageUrl}
-                className="w-full h-full object-cover select-none pointer-events-none"
+                className="w-full h-full object-cover select-none pointer-events-none transition-transform duration-100"
+                style={{
+                  objectPosition: crop ? `${crop.x}% ${crop.y}%` : undefined,
+                  transform: crop?.zoom && crop.zoom !== 1 ? `scale(${crop.zoom})` : undefined,
+                }}
                 alt=""
               />
             ) : (
