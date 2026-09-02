@@ -524,7 +524,7 @@ export default function Editor() {
               setSelectedId(null);
               if (viewMode === 'overview') setViewMode('focus');
             }}
-            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-black/5 shadow-sm ring-1 ring-black/10" : "hover:bg-black/5"}`}
+            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-accent/5 shadow-sm ring-1 ring-accent/30" : "hover:bg-black/5"}`}
           >
             <div className="pointer-events-none rounded overflow-hidden shadow-sm border-[1.5px] border-surface-muted bg-white relative">
               <GridSurface
