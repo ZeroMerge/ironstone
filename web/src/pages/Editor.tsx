@@ -293,6 +293,14 @@ export default function Editor() {
   function onBlockPointerDown(e: React.PointerEvent, block: Block) {
     if (editingId === block.id) return;
     if ((e.target as HTMLElement).closest('[data-resize-handle]')) return;
+
+    const isTextBlock = block.type === 'title' || block.type === 'subtitle' || block.type === 'text' || block.type === 'caption';
+    // If text block is already selected, let click through directly to enter editing mode
+    if (isTextBlock && selectedId === block.id) {
+      setEditingId(block.id);
+      return;
+    }
+
     e.preventDefault();
     setSelectedId(block.id);
     dragRef.current = {
@@ -1248,12 +1256,16 @@ export default function Editor() {
                 }
               }}
               onPointerDown={(e) => {
+                const target = e.target as HTMLElement;
                 if (
-                  (e.target as HTMLElement).hasAttribute('data-grid-inner') ||
-                  (e.target as HTMLElement).hasAttribute('data-grid-surface')
+                  target.hasAttribute('data-grid-inner') ||
+                  target.hasAttribute('data-grid-surface') ||
+                  target.closest('svg') ||
+                  target === e.currentTarget
                 ) {
                   setSelectedId(null);
                   setEditingId(null);
+                  window.getSelection()?.removeAllRanges();
                 }
               }}
             >
@@ -1284,7 +1296,7 @@ export default function Editor() {
                         style={blockStyle(b, rows)}
                         onPointerDown={(e) => onBlockPointerDown(e, b)}
                         onDoubleClick={() => {
-                          if (b.type === 'title' || b.type === 'subtitle' || b.type === 'text') {
+                          if (b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption') {
                             setEditingId(b.id);
                             setSelectedId(b.id);
                           } else if (b.type === 'image') {
@@ -1298,9 +1310,13 @@ export default function Editor() {
                           }`}
                       >
                         <div className="relative w-full h-full">
-                          {/* Active Bounding Ring */}
+                          {/* Active Bounding Box (Clean Figma-grade 1.5px border, zero ring-offset) */}
                           {selected && (
-                            <div className={`absolute inset-0 ring-[1.5px] ${editing ? 'ring-accent/40' : 'ring-accent'} ring-offset-[1.5px] rounded-[var(--block-radius,8px)] pointer-events-none z-20 transition-all`} />
+                            <div
+                              className={`absolute inset-0 border-[1.5px] ${
+                                editing ? 'border-[#0D99FF]/40 border-dashed' : 'border-[#0D99FF]'
+                              } pointer-events-none z-20 transition-colors`}
+                            />
                           )}
 
                           {/* Block Content */}
@@ -1330,57 +1346,60 @@ export default function Editor() {
                             <EditorBlockContent block={b} onSwatchClick={(idx, e) => { e.stopPropagation(); setPaletteEditState({ block: b, index: idx, rect: (e.currentTarget as HTMLElement).getBoundingClientRect() }); }} />
                           )}
 
-                          {/* 8-Point Interactive Resize Handles */}
+                          {/* Modern Minimal Figma-Style Selection Handles (4 Square Corner Anchors + Edge Zones) */}
                           {selected && !editing && (
                             <>
-                              {/* NW */}
+                              {/* NW Corner Square Handle */}
                               <div
                                 data-resize-handle
                                 onPointerDown={(e) => onResizePointerDown(e, b, 'nw')}
-                                className="absolute -top-1 -left-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-nwse-resize z-30 shadow-sm"
+                                className="absolute -top-[3.5px] -left-[3.5px] w-[7px] h-[7px] bg-white border-[1.5px] border-[#0D99FF] rounded-[0.5px] cursor-nwse-resize z-30 shadow-xs hover:scale-125 transition-transform"
                               />
-                              {/* N */}
-                              <div
-                                data-resize-handle
-                                onPointerDown={(e) => onResizePointerDown(e, b, 'n')}
-                                className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-ns-resize z-30 shadow-sm"
-                              />
-                              {/* NE */}
+                              {/* NE Corner Square Handle */}
                               <div
                                 data-resize-handle
                                 onPointerDown={(e) => onResizePointerDown(e, b, 'ne')}
-                                className="absolute -top-1 -right-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-nesw-resize z-30 shadow-sm"
+                                className="absolute -top-[3.5px] -right-[3.5px] w-[7px] h-[7px] bg-white border-[1.5px] border-[#0D99FF] rounded-[0.5px] cursor-nesw-resize z-30 shadow-xs hover:scale-125 transition-transform"
                               />
-                              {/* E */}
-                              <div
-                                data-resize-handle
-                                onPointerDown={(e) => onResizePointerDown(e, b, 'e')}
-                                className="absolute top-1/2 -translate-y-1/2 -right-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-ew-resize z-30 shadow-sm"
-                              />
-                              {/* SE */}
+                              {/* SE Corner Square Handle */}
                               <div
                                 data-resize-handle
                                 onPointerDown={(e) => onResizePointerDown(e, b, 'se')}
-                                className="absolute -bottom-1 -right-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-nwse-resize z-30 shadow-sm"
+                                className="absolute -bottom-[3.5px] -right-[3.5px] w-[7px] h-[7px] bg-white border-[1.5px] border-[#0D99FF] rounded-[0.5px] cursor-nwse-resize z-30 shadow-xs hover:scale-125 transition-transform"
                               />
-                              {/* S */}
-                              <div
-                                data-resize-handle
-                                onPointerDown={(e) => onResizePointerDown(e, b, 's')}
-                                className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-ns-resize z-30 shadow-sm"
-                              />
-                              {/* SW */}
+                              {/* SW Corner Square Handle */}
                               <div
                                 data-resize-handle
                                 onPointerDown={(e) => onResizePointerDown(e, b, 'sw')}
-                                className="absolute -bottom-1 -left-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-nesw-resize z-30 shadow-sm"
+                                className="absolute -bottom-[3.5px] -left-[3.5px] w-[7px] h-[7px] bg-white border-[1.5px] border-[#0D99FF] rounded-[0.5px] cursor-nesw-resize z-30 shadow-xs hover:scale-125 transition-transform"
                               />
-                              {/* W */}
+
+                              {/* Edge Resize Hit Zones (Invisible, Zero Visual Clutter) */}
+                              <div
+                                data-resize-handle
+                                onPointerDown={(e) => onResizePointerDown(e, b, 'n')}
+                                className="absolute -top-1 left-2 right-2 h-2 cursor-ns-resize z-25"
+                              />
+                              <div
+                                data-resize-handle
+                                onPointerDown={(e) => onResizePointerDown(e, b, 's')}
+                                className="absolute -bottom-1 left-2 right-2 h-2 cursor-ns-resize z-25"
+                              />
                               <div
                                 data-resize-handle
                                 onPointerDown={(e) => onResizePointerDown(e, b, 'w')}
-                                className="absolute top-1/2 -translate-y-1/2 -left-1 w-2 h-2 bg-white border-[1.25px] border-accent rounded-full cursor-ew-resize z-30 shadow-sm"
+                                className="absolute -left-1 top-2 bottom-2 w-2 cursor-ew-resize z-25"
                               />
+                              <div
+                                data-resize-handle
+                                onPointerDown={(e) => onResizePointerDown(e, b, 'e')}
+                                className="absolute -right-1 top-2 bottom-2 w-2 cursor-ew-resize z-25"
+                              />
+
+                              {/* Dimension Pill (Figma-grade floating badge) */}
+                              <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-[#0D99FF] text-white text-[10px] font-semibold font-mono tracking-tight px-1.5 py-0.5 rounded-[3px] shadow-sm pointer-events-none whitespace-nowrap z-30 select-none">
+                                {Math.round(b.w * (surfaceRef.current ? surfaceRef.current.clientWidth / COLS : 20))} × {Math.round(b.h * (surfaceRef.current ? surfaceRef.current.clientHeight / rows : 20))}
+                              </div>
                             </>
                           )}
                         </div>

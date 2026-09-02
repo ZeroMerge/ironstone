@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   Bold,
   Italic,
@@ -9,6 +9,7 @@ import {
   AlignRight,
   AlignJustify,
   ChevronDown,
+  X,
 } from 'lucide-react';
 import type { BlockType } from '../lib/types';
 
@@ -47,6 +48,7 @@ export default function TextSelectionToolbar({
   onAlignChange,
   onTrackingChange,
   onFormatCommand,
+  onClose,
 }: TextSelectionToolbarProps) {
   const [showHierarchyMenu, setShowHierarchyMenu] = useState(false);
   const [showTrackingMenu, setShowTrackingMenu] = useState(false);
@@ -69,6 +71,7 @@ export default function TextSelectionToolbar({
   return (
     <div
       ref={toolbarRef}
+      data-text-toolbar="true"
       onMouseDown={(e) => e.preventDefault()}
       style={{
         top: `${position.top}px`,
@@ -273,6 +276,21 @@ export default function TextSelectionToolbar({
           <AlignJustify size={13} strokeWidth={2} />
         </button>
       </div>
+
+      <div className="w-[1px] h-4 bg-black/10 mx-0.5" />
+
+      <button
+        type="button"
+        title="Dismiss toolbar (Esc)"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          onClose?.();
+          window.getSelection()?.removeAllRanges();
+        }}
+        className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-ink hover:bg-black/5 transition-colors"
+      >
+        <X size={13} strokeWidth={2.2} />
+      </button>
     </div>
   );
 }

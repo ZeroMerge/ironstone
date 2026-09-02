@@ -45,6 +45,48 @@ export default function InlineTextEditor({
     }
   }, [block.id, isEditing]);
 
+  // When entering edit mode: automatically focus the contentEditable element and position caret at end
+  useEffect(() => {
+    if (isEditing && editorRef.current) {
+      editorRef.current.focus();
+      const sel = window.getSelection();
+      if (sel) {
+        const range = document.createRange();
+        range.selectNodeContents(editorRef.current);
+        range.collapse(false); // caret to the end
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    } else if (!isEditing) {
+      setToolbarPosition(null);
+    }
+  }, [isEditing]);
+
+  // Click-outside listener while editing: cleanly commits text and stops editing
+  useEffect(() => {
+    if (!isEditing) return;
+
+    function handleGlobalPointerDown(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        editorRef.current &&
+        !editorRef.current.contains(target) &&
+        !target.closest('[data-text-toolbar]')
+      ) {
+        setToolbarPosition(null);
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        if (editorRef.current) {
+          onCommit(editorRef.current.innerHTML);
+        }
+        onStopEditing();
+        window.getSelection()?.removeAllRanges();
+      }
+    }
+
+    window.addEventListener('mousedown', handleGlobalPointerDown);
+    return () => window.removeEventListener('mousedown', handleGlobalPointerDown);
+  }, [isEditing, onCommit, onStopEditing]);
+
   const checkIsEmpty = useCallback(() => {
     if (!editorRef.current) return;
     const text = editorRef.current.innerText?.trim() ?? '';
@@ -114,10 +156,12 @@ export default function InlineTextEditor({
     setToolbarPosition(null);
   };
 
-  // Keyboard shortcuts (Cmd+B, Cmd+I, Cmd+U, Ctrl+Alt+1..4)
+  // Keyboard shortcuts (Cmd+B, Cmd+I, Cmd+U, Ctrl+Alt+1..4, Escape)
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
+      setToolbarPosition(null);
+      window.getSelection()?.removeAllRanges();
       onStopEditing();
       return;
     }
