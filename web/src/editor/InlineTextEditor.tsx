@@ -158,6 +158,10 @@ export default function InlineTextEditor({
 
   // Keyboard shortcuts (Cmd+B, Cmd+I, Cmd+U, Ctrl+Alt+1..4, Escape)
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.stopPropagation();
+    }
+
     if (e.key === 'Escape') {
       e.preventDefault();
       setToolbarPosition(null);

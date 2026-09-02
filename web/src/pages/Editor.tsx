@@ -222,7 +222,18 @@ export default function Editor() {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (editingId) return;
+        const target = e.target as HTMLElement | null;
+        if (
+          editingId ||
+          target?.tagName === 'INPUT' ||
+          target?.tagName === 'TEXTAREA' ||
+          target?.isContentEditable ||
+          target?.closest('[contenteditable="true"]') ||
+          target?.closest('input') ||
+          target?.closest('textarea')
+        ) {
+          return;
+        }
         if (!selectedId || !activePageId) return;
         setPages((prev) => {
           const pg = prev.find((p) => p.id === activePageId);
@@ -2029,14 +2040,20 @@ export default function Editor() {
                             </>
                           )}
 
-                          {/* Floating Hover Action Pill (Clean white studio capsule, flips inside on top row, disappears when moving, reappears on rest) */}
+                          {/* Floating Hover Action Pill (Clean white studio capsule, boundary-aware on edges, disappears when moving, reappears on rest) */}
                           {selected && !isInteracting && (
                             <div
                               data-action-pill="true"
                               onPointerDown={(e) => e.stopPropagation()}
-                              className={`absolute left-1/2 -translate-x-1/2 ${
+                              className={`absolute ${
                                 b.y <= 1 ? 'top-2.5' : '-top-10'
-                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-40 select-none pointer-events-auto transition-all duration-150`}
+                              } ${
+                                b.x < 4 
+                                  ? 'left-2 translate-x-0' 
+                                  : (b.x + b.w > COLS - 4 
+                                      ? 'right-2 left-auto translate-x-0' 
+                                      : 'left-1/2 -translate-x-1/2')
+                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-40 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
                             >
                               <button
                                 onClick={(e) => {
