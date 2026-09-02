@@ -2144,16 +2144,11 @@ export default function Editor() {
       {/* File Type Display */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[11px] font-semibold text-[#8C8983]">File type</label>
-        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#F5F5F3]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
-              <FileText size={13} strokeWidth={2.2} />
-            </div>
-            <span className="text-xs font-semibold text-[#111110]">PDF Document</span>
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#F5F5F3]">
+          <div className="w-6 h-6 rounded-lg bg-accent/10 flex items-center justify-center text-accent">
+            <FileText size={13} strokeWidth={2.2} />
           </div>
-          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-            Suggested
-          </span>
+          <span className="text-xs font-semibold text-[#111110]">PDF Document</span>
         </div>
       </div>
 
