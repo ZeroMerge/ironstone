@@ -2283,12 +2283,10 @@ export default function Editor() {
                             <div className="absolute inset-0 ring-2 ring-accent ring-offset-2 ring-offset-white animate-pulse z-35 pointer-events-none rounded-sm" />
                           )}
 
-                          {/* Active Bounding Box (Clean Figma-grade 1.5px border, zero ring-offset) */}
+                          {/* Active Bounding Box (Refined hairline outline) */}
                           {selected && (
                             <div
-                              className={`absolute inset-0 border-[1.5px] ${
-                                editing ? 'border-[#0D99FF]/40 border-dashed' : 'border-[#0D99FF]'
-                              } pointer-events-none z-20 transition-colors`}
+                              className={`absolute inset-0 border border-[#0D99FF]/70 pointer-events-none z-20 transition-colors`}
                             />
                           )}
 
@@ -2422,7 +2420,7 @@ export default function Editor() {
                               : (primaryBlock.x + primaryBlock.w > COLS - 4 
                                   ? 'right-2 left-auto translate-x-0' 
                                   : 'left-1/2 -translate-x-1/2')
-                          } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
+                          } bg-white text-ink shadow-[0_8px_30px_rgba(0,0,0,0.12),0_1px_3px_rgba(0,0,0,0.06)] rounded-full px-2 py-1 flex items-center gap-1 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
                           onPointerDown={(e) => e.stopPropagation()}
                         >
                           <button
@@ -2710,7 +2708,7 @@ export default function Editor() {
             }`}
           >
             {/* Left: Project title & Slide Counter Badge */}
-            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 backdrop-blur-xl border border-white/10 text-white/90 shadow-lg text-xs font-medium tracking-tight">
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 backdrop-blur-xl text-white/90 shadow-lg text-xs font-medium tracking-tight">
               <span className="font-semibold text-white truncate max-w-[220px]">{project?.name || 'Presentation'}</span>
               <span className="w-1 h-1 rounded-full bg-white/30" />
               <span className="text-white/60 font-mono text-[11px]">
@@ -2724,19 +2722,19 @@ export default function Editor() {
                 e.stopPropagation();
                 exitPresentation();
               }}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 hover:bg-[#242428] active:bg-[#2C2C32] text-white/90 hover:text-white backdrop-blur-xl border border-white/12 shadow-lg transition-all text-xs font-medium group cursor-pointer"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 hover:bg-[#242428] active:bg-[#2C2C32] text-white/90 hover:text-white backdrop-blur-xl shadow-lg transition-all text-xs font-medium group cursor-pointer"
               title="Exit Presentation (Esc)"
             >
               <X size={14} strokeWidth={2.2} className="group-hover:scale-110 transition-transform text-white/70 group-hover:text-white" />
               <span>Exit</span>
-              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold bg-white/10 rounded text-white/60 border border-white/10 font-mono">esc</kbd>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold bg-white/15 rounded text-white/70 font-mono">esc</kbd>
             </button>
           </div>
 
           {/* Toast Notification: "Start of presentation" / "End of presentation" (Apple HUD Pill) */}
           {zenMessage && (
             <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#18181A]/95 backdrop-blur-2xl border border-white/15 text-white shadow-[0_12px_36px_rgba(0,0,0,0.6)] text-xs font-semibold tracking-tight">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#18181A]/95 backdrop-blur-2xl text-white shadow-[0_12px_36px_rgba(0,0,0,0.6)] text-xs font-semibold tracking-tight">
                 {zenMessage.includes('Start') ? (
                   <ArrowLeft size={13} strokeWidth={2.5} className="text-white/60" />
                 ) : (
@@ -2750,7 +2748,7 @@ export default function Editor() {
           {/* Central Slide Canvas (Apple Keynote elevation & proportional fit) */}
           <div
             key={activePageId}
-            className="w-[92vw] h-[86vh] bg-white flex items-center justify-center rounded-[3px] shadow-[0_25px_80px_-15px_rgba(0,0,0,0.7),0_0_1px_1px_rgba(255,255,255,0.08)] overflow-hidden transition-opacity duration-200 animate-in fade-in duration-200"
+            className="w-[92vw] h-[86vh] bg-white flex items-center justify-center rounded-[3px] shadow-[0_25px_80px_-15px_rgba(0,0,0,0.7)] overflow-hidden transition-opacity duration-200 animate-in fade-in duration-200"
             style={{ aspectRatio: project?.orientation === 'landscape' ? '48/32' : '48/64' }}
           >
             {activePage && (
@@ -2776,7 +2774,7 @@ export default function Editor() {
               zenHudVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'
             }`}
           >
-            <div className="flex items-center gap-1 bg-[#161618]/90 backdrop-blur-2xl border border-white/12 text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] rounded-full px-2 py-1.5">
+            <div className="flex items-center gap-1 bg-[#161618]/90 backdrop-blur-2xl text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] rounded-full px-2.5 py-1.5">
               {/* Prev Slide */}
               <button
                 onClick={(e) => {

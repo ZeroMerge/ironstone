@@ -131,7 +131,7 @@ export default function BlockStatic({
       const crop = block.data?.crop;
       return (
         <div 
-          className="w-full h-full bg-white shadow-sm border border-surface-muted/80 flex flex-col overflow-hidden select-none"
+          className="w-full h-full bg-white shadow-[0_4px_20px_rgba(0,0,0,0.05)] flex flex-col overflow-hidden select-none"
           style={{ ...radiusStyle, padding: `${subPadding}px` }}
         >
           <div className="flex-1 w-full min-h-0 relative overflow-hidden rounded-[calc(var(--block-radius,8px)-2px)] bg-surface-active/60">
@@ -169,7 +169,7 @@ export default function BlockStatic({
 
       return (
         <div 
-          className="w-full h-full flex flex-col justify-between p-4 overflow-hidden bg-white/70 border border-surface-muted/60 shadow-sm select-none"
+          className="w-full h-full flex flex-col justify-between p-4 overflow-hidden bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] select-none"
           style={radiusStyle}
         >
           <div className="flex-1 flex flex-col justify-start overflow-hidden">
@@ -178,7 +178,7 @@ export default function BlockStatic({
               {quoteText}
             </p>
           </div>
-          <div className="pt-2 border-t border-surface-muted/50 mt-auto shrink-0 flex items-center justify-between">
+          <div className="pt-2 mt-auto shrink-0 flex items-center justify-between">
             <span className="font-mono uppercase tracking-[0.12em] font-semibold text-[1.1cqw] text-ink/80 truncate">
               — {author}
             </span>
@@ -209,16 +209,16 @@ export default function BlockStatic({
 
       return (
         <div 
-          className="w-full h-full flex flex-col justify-between p-3.5 bg-white/90 border border-surface-muted/80 shadow-sm font-mono select-none overflow-hidden"
+          className="w-full h-full flex flex-col justify-between p-4 bg-white/95 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.06)] font-mono select-none overflow-hidden"
           style={radiusStyle}
         >
-          <div className="flex items-center justify-between border-b border-surface-muted pb-1.5 mb-1 shrink-0">
+          <div className="flex items-center justify-between pb-2 mb-1 shrink-0">
             <span className="text-[1.1cqw] font-bold tracking-[0.15em] text-ink uppercase">Spec Sheet</span>
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
           </div>
           <div className="flex-1 flex flex-col justify-around py-0.5 min-h-0">
             {specs.map((s, idx) => (
-              <div key={idx} className="flex items-center justify-between text-[1.1cqw] leading-none py-0.5 border-b border-surface-muted/30 last:border-none">
+              <div key={idx} className="flex items-center justify-between text-[1.1cqw] leading-none py-1">
                 <span className="text-text-muted tracking-wider uppercase">{s.label}</span>
                 <span className="font-semibold text-ink tracking-tight truncate max-w-[60%] text-right">{s.value}</span>
               </div>
@@ -234,16 +234,16 @@ export default function BlockStatic({
 
       return (
         <div 
-          className="w-full h-full flex flex-wrap gap-1.5 p-3 content-start bg-white/70 border border-surface-muted/60 shadow-sm select-none overflow-y-auto scrollbar-hide"
+          className="w-full h-full flex flex-wrap gap-2 p-3.5 content-start bg-white/90 backdrop-blur-md shadow-[0_4px_20px_rgba(0,0,0,0.04)] select-none overflow-y-auto scrollbar-hide"
           style={radiusStyle}
         >
           {tags.map((t, idx) => (
             <span
               key={idx}
-              className={`inline-flex items-center px-2.5 py-1 rounded-full font-mono text-[1.1cqw] tracking-tight transition-all ${
+              className={`inline-flex items-center px-3 py-1 rounded-full font-mono text-[1.1cqw] tracking-tight transition-all ${
                 tagStyle === 'outline'
-                  ? 'border border-ink/30 text-ink bg-transparent'
-                  : 'bg-surface-active/80 text-ink border border-surface-muted shadow-2xs'
+                  ? 'bg-black/5 text-ink hover:bg-black/10'
+                  : 'bg-surface-active text-ink hover:bg-surface-muted shadow-2xs'
               }`}
             >
               {t.startsWith('#') ? t : `#${t}`}
@@ -290,7 +290,7 @@ export default function BlockStatic({
         const data = block.data || { colors: ['#D1D5DB', '#9CA3AF', '#6B7280', '#4B5563', '#374151'], format: 'hex' };
         const colors = data.colors || [];
         return (
-          <div className="w-full h-full flex flex-col overflow-hidden bg-white shadow-sm border-[1.5px] border-surface-muted" style={radiusStyle}>
+          <div className="w-full h-full flex flex-col overflow-hidden bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]" style={radiusStyle}>
             <div className="flex-1 flex w-full">
               {colors.map((c: string, idx: number) => (
                 <div key={idx} className="flex-1 h-full cursor-pointer hover:opacity-90 transition-opacity" style={{ backgroundColor: c }} onClick={(e) => onSwatchClick?.(idx, e)} />
