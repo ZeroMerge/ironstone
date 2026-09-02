@@ -2211,10 +2211,7 @@ export default function Editor() {
                         key={b.id}
                         id={`block-${b.id}`}
                         data-block="true"
-                        style={{
-                          ...blockStyle(b, rows),
-                          zIndex: isPrimary ? 999 : (selected ? 100 : (b.zIndex ?? 1)),
-                        }}
+                        style={blockStyle(b, rows)}
                         onPointerDown={(e) => onBlockPointerDown(e, b)}
                         onDoubleClick={() => {
                           if (b.type === 'title' || b.type === 'subtitle' || b.type === 'text' || b.type === 'caption') {
@@ -2344,86 +2341,102 @@ export default function Editor() {
                               </div>
                             </>
                           )}
-
-                          {/* Floating Hover Action Pill (Clean white studio capsule, boundary-aware on edges, disappears when moving, reappears on rest) */}
-                          {isPrimary && !isInteracting && (
-                            <div
-                              data-action-pill="true"
-                              onPointerDown={(e) => e.stopPropagation()}
-                              className={`absolute ${
-                                b.y <= 1 ? 'top-2.5' : '-top-10'
-                              } ${
-                                b.x < 4 
-                                  ? 'left-2 translate-x-0' 
-                                  : (b.x + b.w > COLS - 4 
-                                      ? 'right-2 left-auto translate-x-0' 
-                                      : 'left-1/2 -translate-x-1/2')
-                              } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 z-50 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  duplicateSelected();
-                                }}
-                                title="Duplicate Block (Ctrl+D)"
-                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
-                              >
-                                <Copy size={13} strokeWidth={2} />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  bringForward();
-                                }}
-                                title="Bring to Front"
-                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
-                              >
-                                <ArrowUp size={13} strokeWidth={2} />
-                              </button>
-                              {(b.type === 'image' || b.type === 'card') && (
-                                <>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCroppingBlockId(b.id);
-                                    }}
-                                    title="Crop & Focal Point"
-                                    className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
-                                  >
-                                    <Crop size={13} strokeWidth={2} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setPickerBlockId(b.id);
-                                    }}
-                                    title="Replace Image"
-                                    className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
-                                  >
-                                    <Upload size={13} strokeWidth={2} />
-                                  </button>
-                                </>
-                              )}
-                              <div className="w-px h-3.5 bg-surface-muted mx-0.5" />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (activePage) {
-                                    persistPage({ ...activePage, blocks: activePage.blocks.filter(item => item.id !== b.id) });
-                                    setSelectedId(null);
-                                  }
-                                }}
-                                title="Delete Block (Del)"
-                                className="p-1 hover:bg-red-50 hover:text-danger text-text-muted/80 rounded-full transition-colors flex items-center justify-center"
-                              >
-                                <Trash2 size={13} strokeWidth={2} />
-                              </button>
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
                   })}
+
+                  {/* Pinned Canvas-Level Hover Action Pill: Renders OUTSIDE any block stacking context with z-[1000] */}
+                  {(() => {
+                    const primaryBlock = activePage.blocks.find((b) => b.id === selectedId);
+                    if (!primaryBlock || isInteracting) return null;
+                    return (
+                      <div
+                        data-action-pill="true"
+                        style={{
+                          position: 'absolute',
+                          left: `${(primaryBlock.x / COLS) * 100}%`,
+                          top: `${(primaryBlock.y / rows) * 100}%`,
+                          width: `${(primaryBlock.w / COLS) * 100}%`,
+                          height: `${(primaryBlock.h / rows) * 100}%`,
+                          pointerEvents: 'none',
+                          zIndex: 1000,
+                        }}
+                      >
+                        <div
+                          className={`absolute ${
+                            primaryBlock.y <= 1 ? 'top-2.5' : '-top-10'
+                          } ${
+                            primaryBlock.x < 4 
+                              ? 'left-2 translate-x-0' 
+                              : (primaryBlock.x + primaryBlock.w > COLS - 4 
+                                  ? 'right-2 left-auto translate-x-0' 
+                                  : 'left-1/2 -translate-x-1/2')
+                          } bg-white text-ink shadow-[0_4px_16px_rgba(0,0,0,0.14),0_0_1px_rgba(0,0,0,0.25)] border border-surface-muted/90 rounded-full px-1.5 py-1 flex items-center gap-1 select-none pointer-events-auto transition-all duration-150 whitespace-nowrap`}
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              duplicateSelected();
+                            }}
+                            title="Duplicate Block (Ctrl+D)"
+                            className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                          >
+                            <Copy size={13} strokeWidth={2} />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              bringForward();
+                            }}
+                            title="Bring to Front"
+                            className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                          >
+                            <ArrowUp size={13} strokeWidth={2} />
+                          </button>
+                          {(primaryBlock.type === 'image' || primaryBlock.type === 'card') && (
+                            <>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCroppingBlockId(primaryBlock.id);
+                                }}
+                                title="Crop & Focal Point"
+                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                              >
+                                <Crop size={13} strokeWidth={2} />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPickerBlockId(primaryBlock.id);
+                                }}
+                                title="Replace Image"
+                                className="p-1 hover:bg-surface-muted hover:text-ink text-text-muted rounded-full transition-colors flex items-center justify-center"
+                              >
+                                <Upload size={13} strokeWidth={2} />
+                              </button>
+                            </>
+                          )}
+                          <div className="w-px h-3.5 bg-surface-muted mx-0.5" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (activePage) {
+                                persistPage({ ...activePage, blocks: activePage.blocks.filter(item => item.id !== primaryBlock.id) });
+                                setSelectedId(null);
+                              }
+                            }}
+                            title="Delete Block (Del)"
+                            className="p-1 hover:bg-red-50 hover:text-danger text-text-muted/80 rounded-full transition-colors flex items-center justify-center"
+                          >
+                            <Trash2 size={13} strokeWidth={2} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </GridSurface>
             </div>
