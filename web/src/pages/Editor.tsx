@@ -2881,19 +2881,19 @@ export default function Editor() {
           {/* Left panel toggle */}
           <button
             onClick={() => setLeftOpen(!leftOpen)}
-            className={`p-1 rounded transition-colors ${leftOpen ? 'text-ink/60 bg-ink/5' : 'text-text-muted/60 hover:text-ink/70 hover:bg-ink/5'}`}
+            className={`p-1 rounded transition-colors ${leftOpen ? 'text-ink/80 bg-ink/5' : 'text-text-muted/70 hover:text-ink/80 hover:bg-ink/5'}`}
             title="Toggle Pages Panel"
           >
-            <SidebarSimple size={15} weight={leftOpen ? 'fill' : 'regular'} className="opacity-55" />
+            <SidebarSimple size={15} weight={leftOpen ? 'fill' : 'regular'} className="opacity-80" />
           </button>
           {/* Right panel toggle (mirrored) */}
           <button
             onClick={() => setRightInspectorOpen(!rightInspectorOpen)}
-            className={`p-1 rounded transition-colors ${rightInspectorOpen ? 'text-ink/60 bg-ink/5' : 'text-text-muted/60 hover:text-ink/70 hover:bg-ink/5'}`}
+            className={`p-1 rounded transition-colors ${rightInspectorOpen ? 'text-ink/80 bg-ink/5' : 'text-text-muted/70 hover:text-ink/80 hover:bg-ink/5'}`}
             title="Toggle Inspector Panel"
             style={{ transform: 'scaleX(-1)' }}
           >
-            <SidebarSimple size={15} weight={rightInspectorOpen ? 'fill' : 'regular'} className="opacity-55" />
+            <SidebarSimple size={15} weight={rightInspectorOpen ? 'fill' : 'regular'} className="opacity-80" />
           </button>
 
           <div className="w-px h-4 bg-surface-muted/60 mx-0.5" />
@@ -2908,17 +2908,17 @@ export default function Editor() {
               />
               <button
                 onClick={() => setViewMode('focus')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode !== 'overview' ? 'text-ink/60' : 'text-text-muted/50 hover:text-ink/60'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode !== 'overview' ? 'text-ink/80' : 'text-text-muted/60 hover:text-ink/80'}`}
                 title="Focus View"
               >
-                <FrameCorners size={13} weight={viewMode !== 'overview' ? 'fill' : 'regular'} className="opacity-55" />
+                <FrameCorners size={13} weight={viewMode !== 'overview' ? 'fill' : 'regular'} className="opacity-80" />
               </button>
               <button
                 onClick={() => setViewMode('overview')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode === 'overview' ? 'text-ink/60' : 'text-text-muted/50 hover:text-ink/60'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode === 'overview' ? 'text-ink/80' : 'text-text-muted/60 hover:text-ink/80'}`}
                 title="Grid Overview"
               >
-                <SquaresFour size={13} weight={viewMode === 'overview' ? 'fill' : 'regular'} className="opacity-55" />
+                <SquaresFour size={13} weight={viewMode === 'overview' ? 'fill' : 'regular'} className="opacity-80" />
               </button>
             </div>
           )}
