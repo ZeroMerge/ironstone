@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop } from 'lucide-react';
+import { Plus, Maximize2, Minimize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, ArrowRight, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
@@ -269,10 +269,30 @@ export default function Editor() {
     persistPage({ ...page, blocks: page.blocks.map((b) => (b.id === block.id ? block : b)) });
   }
 
-  const showZenMessage = (msg: string) => {
+  const zenTimerRef = useRef<any>(null);
+  const [zenHudVisible, setZenHudVisible] = useState(true);
+  const zenIdleTimerRef = useRef<any>(null);
+
+  const showZenMessage = useCallback((msg: string) => {
     setZenMessage(msg);
-    setTimeout(() => setZenMessage(null), 2000);
-  };
+    if (zenTimerRef.current) clearTimeout(zenTimerRef.current);
+    zenTimerRef.current = setTimeout(() => setZenMessage(null), 2000);
+  }, []);
+
+  const handleZenPointerMove = useCallback(() => {
+    setZenHudVisible(true);
+    if (zenIdleTimerRef.current) clearTimeout(zenIdleTimerRef.current);
+    zenIdleTimerRef.current = setTimeout(() => {
+      setZenHudVisible(false);
+    }, 2500);
+  }, []);
+
+  const exitPresentation = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    setViewMode('focus');
+  }, []);
 
   const navigateZen = useCallback((direction: 'next' | 'prev') => {
     const idx = pages.findIndex(p => p.id === activePageId);
@@ -283,26 +303,56 @@ export default function Editor() {
       if (idx > 0) setActivePageId(pages[idx - 1].id);
       else showZenMessage("Start of presentation");
     }
-  }, [pages, activePageId]);
+  }, [pages, activePageId, showZenMessage]);
+
+  // Fullscreen change listener: auto exit zen mode if browser exits fullscreen
+  useEffect(() => {
+    function onFullscreenChange() {
+      if (!document.fullscreenElement && viewMode === 'zen') {
+        setViewMode('focus');
+      }
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, [viewMode]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        if (viewMode === 'zen') {
-          if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
-          setViewMode('focus');
-        } else {
+      if (viewMode === 'zen') {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          exitPresentation();
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'PageDown' || e.key === 'Enter') {
+          e.preventDefault();
+          navigateZen('next');
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'Backspace') {
+          e.preventDefault();
+          navigateZen('prev');
+          return;
+        }
+        if (e.key === 'Home') {
+          e.preventDefault();
+          if (pages.length > 0) setActivePageId(pages[0].id);
+          return;
+        }
+        if (e.key === 'End') {
+          e.preventDefault();
+          if (pages.length > 0) setActivePageId(pages[pages.length - 1].id);
+          return;
+        }
+      } else {
+        if (e.key === 'Escape') {
           setRightInspectorOpen(false);
         }
-      }
-      if (viewMode === 'zen') {
-        if (e.key === 'ArrowRight' || e.key === ' ') navigateZen('next');
-        if (e.key === 'ArrowLeft') navigateZen('prev');
       }
     }
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, navigateZen]);
+  }, [viewMode, navigateZen, pages, exitPresentation]);
 
   // Keyboard shortcut: Delete selected block
   useEffect(() => {
@@ -2632,55 +2682,165 @@ export default function Editor() {
         </Modal>
       )}
 
-      {/* True Fullscreen Zen / Presentation Overlay */}
+      {/* Mac Keynote-Grade Fullscreen Presentation Engine */}
       {viewMode === 'zen' && (
         <div
-          className="fixed inset-0 z-[99999] bg-[#0F0F0F] flex flex-col items-center justify-center overflow-hidden cursor-pointer"
+          className={`fixed inset-0 z-[99999] bg-[#0A0A0B] select-none flex flex-col items-center justify-center overflow-hidden transition-all duration-300 ${
+            zenHudVisible ? 'cursor-default' : 'cursor-none'
+          }`}
+          onPointerMove={handleZenPointerMove}
           onClick={(e) => {
+            if ((e.target as HTMLElement).closest('[data-zen-control="true"]')) return;
             const rect = e.currentTarget.getBoundingClientRect();
-            if (e.clientX < rect.width / 2) navigateZen('prev');
-            else navigateZen('next');
+            if (e.clientX < rect.width * 0.3) {
+              navigateZen('prev');
+            } else {
+              navigateZen('next');
+            }
           }}
         >
+          {/* Subtle Ambient Vignette / Depth */}
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_45%,rgba(255,255,255,0.03)_0%,transparent_70%)]" />
+
+          {/* Top Floating Header HUD */}
+          <div
+            data-zen-control="true"
+            className={`absolute top-5 left-0 right-0 px-8 flex items-center justify-between z-50 pointer-events-auto transition-all duration-300 ${
+              zenHudVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+            }`}
+          >
+            {/* Left: Project title & Slide Counter Badge */}
+            <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 backdrop-blur-xl border border-white/10 text-white/90 shadow-lg text-xs font-medium tracking-tight">
+              <span className="font-semibold text-white truncate max-w-[220px]">{project?.name || 'Presentation'}</span>
+              <span className="w-1 h-1 rounded-full bg-white/30" />
+              <span className="text-white/60 font-mono text-[11px]">
+                Slide {pages.findIndex((p) => p.id === activePageId) + 1} of {pages.length}
+              </span>
+            </div>
+
+            {/* Right: Mac Keynote-Style Frosted Glass Exit Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                exitPresentation();
+              }}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#18181A]/85 hover:bg-[#242428] active:bg-[#2C2C32] text-white/90 hover:text-white backdrop-blur-xl border border-white/12 shadow-lg transition-all text-xs font-medium group cursor-pointer"
+              title="Exit Presentation (Esc)"
+            >
+              <X size={14} strokeWidth={2.2} className="group-hover:scale-110 transition-transform text-white/70 group-hover:text-white" />
+              <span>Exit</span>
+              <kbd className="px-1.5 py-0.5 text-[10px] font-semibold bg-white/10 rounded text-white/60 border border-white/10 font-mono">esc</kbd>
+            </button>
+          </div>
+
+          {/* Toast Notification: "Start of presentation" / "End of presentation" (Apple HUD Pill) */}
           {zenMessage && (
-            <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white/10 text-white backdrop-blur-md px-6 py-2 rounded-full text-sm font-bold z-50 animate-in fade-in slide-in-from-top-4 duration-300">
-              {zenMessage}
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[60] pointer-events-none animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#18181A]/95 backdrop-blur-2xl border border-white/15 text-white shadow-[0_12px_36px_rgba(0,0,0,0.6)] text-xs font-semibold tracking-tight">
+                {zenMessage.includes('Start') ? (
+                  <ArrowLeft size={13} strokeWidth={2.5} className="text-white/60" />
+                ) : (
+                  <ArrowRight size={13} strokeWidth={2.5} className="text-white/60" />
+                )}
+                <span>{zenMessage}</span>
+              </div>
             </div>
           )}
+
+          {/* Central Slide Canvas (Apple Keynote elevation & proportional fit) */}
           <div
-            className="w-[90vw] h-[90vh] bg-white flex items-center justify-center shadow-2xl transition-all duration-300 ease-out"
-            style={{ aspectRatio: project.orientation === 'landscape' ? '48/32' : '48/64' }}
+            key={activePageId}
+            className="w-[92vw] h-[86vh] bg-white flex items-center justify-center rounded-[3px] shadow-[0_25px_80px_-15px_rgba(0,0,0,0.7),0_0_1px_1px_rgba(255,255,255,0.08)] overflow-hidden transition-opacity duration-200 animate-in fade-in duration-200"
+            style={{ aspectRatio: project?.orientation === 'landscape' ? '48/32' : '48/64' }}
           >
-            <GridSurface
-              orientation={project.orientation}
-              styles={project.styles}
-              className="w-full h-full"
-              showGridOverlay={false}
-            >
-              {activePage?.blocks.map((b) => (
-                <div key={b.id} style={blockStyle(b, rows)} className="pointer-events-none">
-                  <EditorBlockContent block={b} />
-                </div>
-              ))}
-            </GridSurface>
+            {activePage && (
+              <GridSurface
+                orientation={project?.orientation ?? 'landscape'}
+                styles={project?.styles}
+                className="w-full h-full"
+                showGridOverlay={false}
+              >
+                {activePage.blocks.map((b) => (
+                  <div key={b.id} style={blockStyle(b, rows)} className="pointer-events-none">
+                    <EditorBlockContent block={b} />
+                  </div>
+                ))}
+              </GridSurface>
+            )}
           </div>
 
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-[11px] font-bold tracking-widest uppercase flex items-center gap-8">
-            <span className="hover:text-white transition-colors">← Prev</span>
-            <span className="text-white/90">Slide {pages.findIndex(p => p.id === activePageId) + 1} of {pages.length}</span>
-            <span className="hover:text-white transition-colors">Next →</span>
-          </div>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
-              setViewMode('focus');
-            }}
-            className="absolute top-6 right-6 text-white/50 hover:text-white p-2 transition-colors z-50"
+          {/* Bottom Floating Mac Dock Controller */}
+          <div
+            data-zen-control="true"
+            className={`absolute bottom-6 left-1/2 -translate-x-1/2 z-50 pointer-events-auto transition-all duration-300 ${
+              zenHudVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'
+            }`}
           >
-            <span className="text-xs uppercase tracking-wider font-bold">Esc to Exit</span>
-          </button>
+            <div className="flex items-center gap-1 bg-[#161618]/90 backdrop-blur-2xl border border-white/12 text-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] rounded-full px-2 py-1.5">
+              {/* Prev Slide */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigateZen('prev');
+                }}
+                disabled={pages.findIndex((p) => p.id === activePageId) === 0}
+                title="Previous Slide (←)"
+                className="p-1.5 hover:bg-white/15 active:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent rounded-full text-white/80 hover:text-white transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} strokeWidth={2.2} />
+              </button>
+
+              {/* Slide Counter Badge */}
+              <div className="px-3 py-1 text-xs font-mono font-semibold text-white/90 select-none tracking-tight">
+                {pages.findIndex((p) => p.id === activePageId) + 1}
+                <span className="text-white/40 mx-1">/</span>
+                <span className="text-white/60">{pages.length}</span>
+              </div>
+
+              {/* Next Slide */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigateZen('next');
+                }}
+                disabled={pages.findIndex((p) => p.id === activePageId) === pages.length - 1}
+                title="Next Slide (→ or Space)"
+                className="p-1.5 hover:bg-white/15 active:bg-white/20 disabled:opacity-30 disabled:hover:bg-transparent rounded-full text-white/80 hover:text-white transition-all cursor-pointer disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} strokeWidth={2.2} />
+              </button>
+
+              <div className="w-px h-3.5 bg-white/15 mx-1" />
+
+              {/* Native Fullscreen Toggle */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(() => {});
+                  } else {
+                    document.documentElement.requestFullscreen().catch(() => {});
+                  }
+                }}
+                title={document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                className="p-1.5 hover:bg-white/15 active:bg-white/20 rounded-full text-white/70 hover:text-white transition-all cursor-pointer"
+              >
+                {document.fullscreenElement ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize2 size={14} strokeWidth={2} />}
+              </button>
+
+              {/* Exit Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  exitPresentation();
+                }}
+                title="Exit Presentation (Esc)"
+                className="p-1.5 hover:bg-red-500/20 active:bg-red-500/30 text-white/70 hover:text-red-400 rounded-full transition-all cursor-pointer ml-0.5"
+              >
+                <X size={14} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
