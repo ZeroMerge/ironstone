@@ -27,7 +27,7 @@ export default function GridSurface({
   const font = styles?.fontPairing ?? 'sans';
 
   const toneConfig: Record<string, { bg: string; text: string; gridColor: string }> = {
-    studio: { bg: '#FAFAF9', text: '#111110', gridColor: '#111110' },
+    studio: { bg: '#FFFFFF', text: '#111110', gridColor: '#111110' },
     linen: { bg: '#F6F4EE', text: '#1C1B18', gridColor: '#1C1B18' },
     slate: { bg: '#ECEBE8', text: '#111110', gridColor: '#111110' },
     obsidian: { bg: '#111110', text: '#FAFAF9', gridColor: '#FAFAF9' },
@@ -44,7 +44,7 @@ export default function GridSurface({
 
   return (
     <div
-      className={`relative transition-colors duration-300 shadow-lift rounded-md overflow-hidden ${className}`}
+      className={`relative transition-colors duration-300 rounded-sm overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.08),0_0_1px_rgba(0,0,0,0.2)] ${className}`}
       style={{
         aspectRatio: aspectFor(orientation),
         containerType: 'inline-size',

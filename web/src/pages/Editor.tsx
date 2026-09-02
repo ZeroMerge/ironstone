@@ -524,7 +524,7 @@ export default function Editor() {
               setSelectedId(null);
               if (viewMode === 'overview') setViewMode('focus');
             }}
-            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-accent/5 shadow-sm ring-1 ring-accent/30" : "hover:bg-black/5"}`}
+            className={`group relative cursor-pointer rounded-lg p-2 transition-all flex-shrink-0 ${activePageId === p.id && viewMode === 'focus' ? "bg-black/5 shadow-sm ring-1 ring-black/30" : "hover:bg-black/5"}`}
           >
             <div className="pointer-events-none rounded overflow-hidden shadow-sm border-[1.5px] border-surface-muted bg-white relative">
               <GridSurface
@@ -622,14 +622,14 @@ export default function Editor() {
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <div className="text-[10px] font-bold uppercase tracking-wider text-text-muted/60 mb-2.5 px-1">{children}</div>
   );
-  
+
   // Segmented Control wrapper
   const SegmentedControl = ({ children }: { children: React.ReactNode }) => (
     <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg gap-1">
       {children}
     </div>
   );
-  
+
   // Segmented Pill
   const SegmentedPill = ({ active, onClick, children, title }: { active: boolean; onClick: () => void; children: React.ReactNode; title?: string }) => (
     <button
@@ -653,7 +653,7 @@ export default function Editor() {
       <button onClick={sendBackward} title="Send Backward" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-ink hover:bg-black/5 transition-colors">
         <ArrowDown size={14} strokeWidth={2} />
       </button>
-      <button onClick={() => { if (activePage && selectedId) { persistPage({ ...activePage, blocks: activePage.blocks.filter(b => b.id !== selectedId) }); setSelectedId(null); }}} title="Delete" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors">
+      <button onClick={() => { if (activePage && selectedId) { persistPage({ ...activePage, blocks: activePage.blocks.filter(b => b.id !== selectedId) }); setSelectedId(null); } }} title="Delete" className="flex-1 flex justify-center py-1.5 rounded-md text-text-muted hover:text-danger hover:bg-danger/10 transition-colors">
         <Trash2 size={14} strokeWidth={2} />
       </button>
     </div>
@@ -680,9 +680,9 @@ export default function Editor() {
           <div className="mb-6">
             <SectionLabel>Size</SectionLabel>
             <div className="flex items-center bg-surface-muted/50 p-1 rounded-lg">
-              <button onClick={() => patchBlock({ fontSize: Math.max(8, sz - 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><span className="w-3 h-0.5 bg-current rounded-full"/></button>
+              <button onClick={() => patchBlock({ fontSize: Math.max(8, sz - 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><span className="w-3 h-0.5 bg-current rounded-full" /></button>
               <span className="flex-1 text-[12px] font-bold text-ink tabular-nums text-center">{sz}</span>
-              <button onClick={() => patchBlock({ fontSize: Math.min(120, sz + 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><Plus size={14} strokeWidth={2.5}/></button>
+              <button onClick={() => patchBlock({ fontSize: Math.min(120, sz + 1) })} className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"><Plus size={14} strokeWidth={2.5} /></button>
             </div>
           </div>
           <div className="mb-6">
@@ -774,12 +774,12 @@ export default function Editor() {
               <button
                 onClick={() => { if (colors.length > 3) patchBlockData({ colors: colors.slice(0, -1) }); }}
                 className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"
-              ><span className="w-3 h-0.5 bg-current rounded-full"/></button>
+              ><span className="w-3 h-0.5 bg-current rounded-full" /></button>
               <span className="flex-1 text-[12px] font-bold text-ink tabular-nums text-center">{colors.length}</span>
               <button
                 onClick={() => { if (colors.length < 8) patchBlockData({ colors: [...colors, '#CCCCCC'] }); }}
                 className="w-8 h-7 flex items-center justify-center rounded-md text-text-muted hover:bg-black/5 hover:text-ink transition-colors"
-              ><Plus size={14} strokeWidth={2.5}/></button>
+              ><Plus size={14} strokeWidth={2.5} /></button>
             </div>
           </div>
           <div className="mb-6">
@@ -817,7 +817,7 @@ export default function Editor() {
           <div className="flex items-center gap-2">
             {([
               { key: 'studio', label: 'White', color: '#FFFFFF' },
-              { key: 'linen',  label: 'Warm',  color: '#F5F2EB' },
+              { key: 'linen', label: 'Warm', color: '#F5F2EB' },
               { key: 'obsidian', label: 'Dark', color: '#121212' },
             ] as const).map(t => (
               <button
@@ -878,7 +878,7 @@ export default function Editor() {
 
   const componentsTabContent = (
     <div className="px-4 py-4 grid grid-cols-2 gap-3">
-      
+
       {/* Title Snapshot */}
       <div
         draggable
@@ -1011,9 +1011,9 @@ export default function Editor() {
 
   // ── Right Sidebar Assembly ─────────────────────────────────────────────────
   const inspectorTabs: { id: 'design' | 'components' | 'assets'; icon: React.ReactNode; title: string }[] = [
-    { id: 'design',     icon: <SlidersHorizontal size={16} strokeWidth={activeInspectorTab === 'design' ? 2.5 : 2} />,     title: 'Design' },
+    { id: 'design', icon: <SlidersHorizontal size={16} strokeWidth={activeInspectorTab === 'design' ? 2.5 : 2} />, title: 'Design' },
     { id: 'components', icon: <LayoutGrid size={16} strokeWidth={activeInspectorTab === 'components' ? 2.5 : 2} />, title: 'Components' },
-    { id: 'assets',     icon: <ImageIcon size={16} strokeWidth={activeInspectorTab === 'assets' ? 2.5 : 2} />,        title: 'Assets' },
+    { id: 'assets', icon: <ImageIcon size={16} strokeWidth={activeInspectorTab === 'assets' ? 2.5 : 2} />, title: 'Assets' },
   ];
 
   const rightSidebarJsx = (
@@ -1025,11 +1025,10 @@ export default function Editor() {
             key={tab.id}
             onClick={() => setActiveInspectorTab(tab.id)}
             title={tab.title}
-            className={`flex-1 flex items-center justify-center py-2 rounded-md transition-all duration-200 ${
-              activeInspectorTab === tab.id
-                ? 'bg-white text-ink shadow-sm ring-1 ring-black/5'
-                : 'text-text-muted hover:text-ink hover:bg-black/5'
-            }`}
+            className={`flex-1 flex items-center justify-center py-2 rounded-md transition-all duration-200 ${activeInspectorTab === tab.id
+              ? 'bg-white text-ink shadow-sm ring-1 ring-black/5'
+              : 'text-text-muted hover:text-ink hover:bg-black/5'
+              }`}
           >
             {tab.icon}
           </button>
@@ -1038,9 +1037,9 @@ export default function Editor() {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto scrollbar-hover">
-        {activeInspectorTab === 'design'     && designTabContent}
+        {activeInspectorTab === 'design' && designTabContent}
         {activeInspectorTab === 'components' && componentsTabContent}
-        {activeInspectorTab === 'assets'     && assetsTabContent}
+        {activeInspectorTab === 'assets' && assetsTabContent}
       </div>
     </div>
   );
@@ -1233,7 +1232,7 @@ export default function Editor() {
                 orientation={project.orientation}
                 styles={project.styles}
                 showGridOverlay={isInteracting}
-                className="w-full shadow-lift rounded-md"
+                className="w-full"
               >
                 <div className="absolute inset-0" data-grid-inner>
                   {activePage.blocks.length === 0 && (
@@ -1415,7 +1414,7 @@ export default function Editor() {
   );
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-[#EBEBEB] overflow-hidden relative">
+    <div className="flex flex-col h-full min-h-screen bg-[#F5F5F5] overflow-hidden relative">
       {/* Mobile Degradation Banner */}
       <div className="lg:hidden bg-accent text-white px-4 py-2 text-xs font-semibold text-center shrink-0 z-50">
         Best experienced on desktop / tablet screen.
