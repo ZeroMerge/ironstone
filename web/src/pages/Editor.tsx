@@ -2881,44 +2881,44 @@ export default function Editor() {
           {/* Left panel toggle */}
           <button
             onClick={() => setLeftOpen(!leftOpen)}
-            className={`p-1.5 rounded-md transition-colors ${leftOpen ? 'text-[#575653] bg-black/5' : 'text-[#8C8983] hover:text-[#575653] hover:bg-black/5'}`}
+            className={`p-1 rounded transition-colors ${leftOpen ? 'text-ink/60 bg-ink/5' : 'text-text-muted/60 hover:text-ink/70 hover:bg-ink/5'}`}
             title="Toggle Pages Panel"
           >
-            <SidebarSimple size={15} weight="regular" />
+            <SidebarSimple size={15} weight={leftOpen ? 'fill' : 'regular'} className="opacity-55" />
           </button>
           {/* Right panel toggle (mirrored) */}
           <button
             onClick={() => setRightInspectorOpen(!rightInspectorOpen)}
-            className={`p-1.5 rounded-md transition-colors ${rightInspectorOpen ? 'text-[#575653] bg-black/5' : 'text-[#8C8983] hover:text-[#575653] hover:bg-black/5'}`}
+            className={`p-1 rounded transition-colors ${rightInspectorOpen ? 'text-ink/60 bg-ink/5' : 'text-text-muted/60 hover:text-ink/70 hover:bg-ink/5'}`}
             title="Toggle Inspector Panel"
             style={{ transform: 'scaleX(-1)' }}
           >
-            <SidebarSimple size={15} weight="regular" />
+            <SidebarSimple size={15} weight={rightInspectorOpen ? 'fill' : 'regular'} className="opacity-55" />
           </button>
 
-          <div className="w-px h-4 bg-surface-muted mx-0.5" />
+          <div className="w-px h-4 bg-surface-muted/60 mx-0.5" />
 
-          <span className="text-[#8C8983] font-medium">{selectedId ? 'Block Properties' : 'Document Canvas'}</span>
+          <span className="text-text-muted/80">{selectedId ? 'Block Properties' : 'Document Canvas'}</span>
 
           {!selectedId && (
-            <div className="flex items-center bg-black/5 rounded-md p-0.5 relative">
+            <div className="flex items-center bg-ink/5 rounded-md p-0.5 relative">
               {/* Sliding active pill */}
               <div
                 className={`absolute inset-y-0.5 w-[26px] bg-white rounded-[4px] shadow-xs transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${viewMode === 'overview' ? 'left-[28px]' : 'left-0.5'}`}
               />
               <button
                 onClick={() => setViewMode('focus')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-200 ${viewMode !== 'overview' ? 'text-[#44423E]' : 'text-[#8C8983] hover:text-[#575653]'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode !== 'overview' ? 'text-ink/60' : 'text-text-muted/50 hover:text-ink/60'}`}
                 title="Focus View"
               >
-                <FrameCorners size={13} weight="regular" />
+                <FrameCorners size={13} weight={viewMode !== 'overview' ? 'fill' : 'regular'} className="opacity-55" />
               </button>
               <button
                 onClick={() => setViewMode('overview')}
-                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-200 ${viewMode === 'overview' ? 'text-[#44423E]' : 'text-[#8C8983] hover:text-[#575653]'}`}
+                className={`relative w-[26px] h-[26px] flex items-center justify-center rounded-[4px] z-10 transition-colors duration-300 ${viewMode === 'overview' ? 'text-ink/60' : 'text-text-muted/50 hover:text-ink/60'}`}
                 title="Grid Overview"
               >
-                <SquaresFour size={13} weight="regular" />
+                <SquaresFour size={13} weight={viewMode === 'overview' ? 'fill' : 'regular'} className="opacity-55" />
               </button>
             </div>
           )}
