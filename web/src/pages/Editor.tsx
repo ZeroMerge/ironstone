@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Plus, Maximize2, Minimize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, ArrowRight, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop, ChevronLeft, ChevronRight, ChevronDown, X, Download, Printer, FileText, CheckCircle2, AlertCircle, Loader2, Mail } from 'lucide-react';
+import { Plus, Maximize2, Minimize2, Columns, Type, Image as ImageIcon, Check, MousePointer2, Trash2, Copy, MonitorPlay, Grid2X2, AlignLeft, AlignCenter, AlignRight, Bold, Italic, CornerDownRight, Layers, GripHorizontal, Palette, ArrowLeft, ArrowRight, LayoutGrid, SlidersHorizontal, ArrowUp, ArrowDown, Upload, Wand2, Crop, ChevronLeft, ChevronRight, ChevronDown, X, Download, Printer, FileText, CheckCircle2, AlertCircle, Loader2, Mail, Undo2, Redo2, Pipette } from 'lucide-react';
 import { SidebarSimple, FrameCorners, SquaresFour } from '@phosphor-icons/react';
 import {
   getProject,
@@ -1463,63 +1463,142 @@ export default function Editor() {
       );
     }
 
-    // NOTHING SELECTED → Global Document Styles
+    // NOTHING SELECTED → Studio Canvas Controls & Global Document Styles
     const styles = project?.styles ?? {};
     return (
-      <div className="px-4 py-4">
-        <div className="mb-6">
+      <div className="px-4 py-4 space-y-5 select-none">
+        {/* Studio Quick Actions: History & Eyedropper */}
+        <div className="flex items-center justify-between pb-3 border-b border-surface-muted/60">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-ink">Studio Controls</span>
+            <span className="text-[10px] text-text-muted">Canvas & Document Settings</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              title="Undo (Ctrl+Z)"
+              className="p-1.5 rounded-md hover:bg-surface-muted disabled:opacity-30 text-text-muted hover:text-ink transition-colors cursor-pointer"
+            >
+              <Undo2 size={14} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIndex >= historyStack.length - 1}
+              title="Redo (Ctrl+Shift+Z)"
+              className="p-1.5 rounded-md hover:bg-surface-muted disabled:opacity-30 text-text-muted hover:text-ink transition-colors cursor-pointer"
+            >
+              <Redo2 size={14} />
+            </button>
+            {'EyeDropper' in window && (
+              <button
+                onClick={async () => {
+                  try {
+                    const eyeDropper = new (window as any).EyeDropper();
+                    const result = await eyeDropper.open();
+                    if (result?.sRGBHex && activePage) {
+                      const paletteBlock = activePage.blocks.find(b => b.type === 'palette');
+                      if (paletteBlock) {
+                        const colors = paletteBlock.data?.colors || ['#111110', '#8C8983', '#E6E4DF', '#FFFFFF'];
+                        if (!colors.includes(result.sRGBHex)) {
+                          const updated = {
+                            ...paletteBlock,
+                            data: { ...paletteBlock.data, colors: [...colors.slice(0, 5), result.sRGBHex] }
+                          };
+                          updateBlock(activePage.id, updated);
+                        }
+                      }
+                    }
+                  } catch (e) {}
+                }}
+                title="Pick Color from Screen"
+                className="p-1.5 rounded-md hover:bg-surface-muted text-text-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                <Pipette size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Kinetic Drag Physics Mode */}
+        <div>
+          <SectionLabel>Drag Interaction Physics</SectionLabel>
+          <SegmentedControl>
+            <SegmentedPill active={physicsMode === 'free'} onClick={() => setPhysicsMode('free')}>
+              Free
+            </SegmentedPill>
+            <SegmentedPill active={physicsMode === 'swap'} onClick={() => setPhysicsMode('swap')}>
+              Swap
+            </SegmentedPill>
+            <SegmentedPill active={physicsMode === 'push'} onClick={() => setPhysicsMode('push')}>
+              Push
+            </SegmentedPill>
+          </SegmentedControl>
+        </div>
+
+        {/* Canvas Tone */}
+        <div>
           <SectionLabel>Canvas Tone</SectionLabel>
           <div className="flex items-center gap-2">
             {([
-              { key: 'studio', label: 'White', color: '#FFFFFF' },
-              { key: 'linen', label: 'Warm', color: '#F5F2EB' },
-              { key: 'obsidian', label: 'Dark', color: '#121212' },
+              { key: 'studio', label: 'White', color: '#FAFAF9' },
+              { key: 'linen', label: 'Warm Linen', color: '#F6F4EE' },
+              { key: 'slate', label: 'Cool Grey', color: '#ECEBE8' },
+              { key: 'obsidian', label: 'Obsidian', color: '#111110' },
             ] as const).map(t => (
               <button
                 key={t.key}
                 onClick={() => patchStyles({ canvasTone: t.key })}
                 title={t.label}
-                className={`flex-1 h-10 rounded-lg transition-all ring-offset-2 ring-offset-surface ${styles.canvasTone === t.key || (!styles.canvasTone && t.key === 'studio') ? 'ring-2 ring-ink shadow-sm' : 'ring-1 ring-black/5 hover:ring-black/10'}`}
+                className={`flex-1 h-9 rounded-lg transition-all ring-offset-2 ring-offset-surface cursor-pointer ${
+                  (styles.canvasTone ?? 'studio') === t.key
+                    ? 'ring-2 ring-ink shadow-sm'
+                    : 'ring-1 ring-black/10 hover:ring-black/20'
+                }`}
                 style={{ background: t.color }}
               />
             ))}
           </div>
         </div>
 
-        <div className="mb-6">
+        {/* Corner Radius */}
+        <div>
           <SectionLabel>Corner Radius</SectionLabel>
           <SegmentedControl>
             {([0, 4, 8, 16, 24] as const).map(r => (
               <SegmentedPill key={r} active={(styles.cornerRadius ?? 8) === r} onClick={() => patchStyles({ cornerRadius: r })}>
-                {r}
+                {r}px
               </SegmentedPill>
             ))}
           </SegmentedControl>
         </div>
 
-        <div className="mb-6">
+        {/* Grid Gap */}
+        <div>
           <SectionLabel>Grid Gap</SectionLabel>
           <SegmentedControl>
-            <SegmentedPill active={(styles.gridGap ?? 0) === 0} onClick={() => patchStyles({ gridGap: 0 })}>None</SegmentedPill>
-            <SegmentedPill active={(styles.gridGap ?? 0) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight</SegmentedPill>
-            <SegmentedPill active={(styles.gridGap ?? 0) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced</SegmentedPill>
-            <SegmentedPill active={(styles.gridGap ?? 0) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 8) === 0} onClick={() => patchStyles({ gridGap: 0 })}>None</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 8) === 8} onClick={() => patchStyles({ gridGap: 8 })}>Tight (8px)</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 8) === 16} onClick={() => patchStyles({ gridGap: 16 })}>Balanced (16px)</SegmentedPill>
+            <SegmentedPill active={(styles.gridGap ?? 8) === 24} onClick={() => patchStyles({ gridGap: 24 })}>Airy (24px)</SegmentedPill>
           </SegmentedControl>
         </div>
 
-        <div className="mb-6">
-          <SectionLabel>Margin</SectionLabel>
+        {/* Margin */}
+        <div>
+          <SectionLabel>Page Margin</SectionLabel>
           <SegmentedControl>
             {([0, 16, 24, 32, 48] as const).map(m => (
-              <SegmentedPill key={m} active={(styles.margin ?? 0) === m} onClick={() => patchStyles({ margin: m })}>
-                {m === 0 ? 'None' : m}
+              <SegmentedPill key={m} active={(styles.margin ?? 24) === m} onClick={() => patchStyles({ margin: m })}>
+                {m === 0 ? 'None' : `${m}px`}
               </SegmentedPill>
             ))}
           </SegmentedControl>
         </div>
 
-        <div className="mb-6">
-          <SectionLabel>Typography</SectionLabel>
+        {/* Typography */}
+        <div>
+          <SectionLabel>Typography System</SectionLabel>
           <SegmentedControl>
             <SegmentedPill active={(styles.fontPairing ?? 'sans') === 'sans'} onClick={() => patchStyles({ fontPairing: 'sans' })}>Sans</SegmentedPill>
             <SegmentedPill active={styles.fontPairing === 'serif'} onClick={() => patchStyles({ fontPairing: 'serif' })}>Serif</SegmentedPill>
@@ -2037,16 +2116,16 @@ export default function Editor() {
   const exportDropdownJsx = (
     <div
       ref={exportDropdownRef}
-      className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-surface/98 backdrop-blur-xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-5 z-50 flex flex-col gap-4 text-ink select-none animate-in fade-in zoom-in-95 duration-150"
+      className="fixed top-16 right-4 sm:right-6 w-[340px] sm:w-[360px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)] overflow-y-auto bg-white dark:bg-[#1E1E1E] rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.25)] p-5 z-[9999] flex flex-col gap-4 text-ink select-none animate-in fade-in zoom-in-95 duration-150 scrollbar-hover"
     >
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-ink">Download</span>
         <button
           onClick={() => setExportOpen(false)}
-          className="w-6 h-6 rounded-full flex items-center justify-center text-text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
+          className="w-7 h-7 rounded-full flex items-center justify-center text-text-muted hover:text-ink hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
         >
-          <X size={14} />
+          <X size={15} />
         </button>
       </div>
 
@@ -2142,7 +2221,7 @@ export default function Editor() {
 
         {/* Custom Page Picker Grid */}
         {exportPageScope === 'custom' && (
-          <div className="grid grid-cols-4 gap-2 pt-1 max-h-36 overflow-y-auto scrollbar-hover">
+          <div className="grid grid-cols-4 sm:grid-cols-5 gap-1.5 pt-1 max-h-36 overflow-y-auto scrollbar-hover pr-1">
             {pages.map((p, idx) => {
               const isSelected = customSelectedPages.includes(p.id);
               return (
@@ -2155,14 +2234,14 @@ export default function Editor() {
                         : [...prev, p.id]
                     );
                   }}
-                  className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                  className={`py-2 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-accent/10 text-accent font-bold ring-2 ring-accent'
-                      : 'bg-surface-muted/40 text-text-muted hover:bg-surface-muted hover:text-ink'
+                      : 'bg-surface-muted/50 text-text-muted hover:bg-surface-muted hover:text-ink'
                   }`}
                 >
                   <span className="text-xs font-mono font-bold">{idx + 1}</span>
-                  <span className="text-[9px] truncate max-w-[50px]">Page {idx + 1}</span>
+                  <span className="text-[9px] truncate max-w-[48px]">Page {idx + 1}</span>
                 </button>
               );
             })}
@@ -2427,48 +2506,6 @@ export default function Editor() {
         )}
 
         <div className="w-full px-3 md:px-5 lg:px-6 py-3 max-w-6xl mx-auto">
-          {/* Top Studio Controls Bar (Mounted & Fully Functional) */}
-          {project && (
-            <StudioStyleBar
-              styles={project.styles ?? {}}
-              onChange={(newStyles) => {
-                patchStyles(newStyles);
-                pushHistory(pages, newStyles);
-              }}
-              physicsMode={physicsMode}
-              onPhysicsModeChange={setPhysicsMode}
-              onUndo={undo}
-              onRedo={redo}
-              canUndo={historyIndex > 0}
-              canRedo={historyIndex < historyStack.length - 1}
-              onEyedropper={async () => {
-                if ('EyeDropper' in window) {
-                  try {
-                    const eyeDropper = new (window as any).EyeDropper();
-                    const result = await eyeDropper.open();
-                    if (result?.sRGBHex) {
-                      const color = result.sRGBHex;
-                      if (activePage) {
-                        const paletteBlock = activePage.blocks.find(b => b.type === 'palette');
-                        if (paletteBlock) {
-                          const colors = paletteBlock.data?.colors || ['#111110', '#8C8983', '#E6E4DF', '#FFFFFF'];
-                          if (!colors.includes(color)) {
-                            const updated = {
-                              ...paletteBlock,
-                              data: { ...paletteBlock.data, colors: [...colors.slice(0, 5), color] }
-                            };
-                            updateBlock(activePage.id, updated);
-                            return;
-                          }
-                        }
-                      }
-                      patchStyles({ canvasTone: 'studio' });
-                    }
-                  } catch (e) {}
-                }
-              }}
-            />
-          )}
 
           {loading ? (
             <div className="flex items-center justify-center h-64 text-sm font-semibold text-text-muted">
@@ -2921,8 +2958,16 @@ export default function Editor() {
               <span>Export</span>
             </button>
 
-            {/* Canva-Style Floating Download Popup */}
-            {exportOpen && exportDropdownJsx}
+            {/* Canva-Style Floating Download Popup with Click-off Backdrop */}
+            {exportOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-[9998] bg-black/10 backdrop-blur-[1px] cursor-default animate-in fade-in duration-150"
+                  onClick={() => setExportOpen(false)}
+                />
+                {exportDropdownJsx}
+              </>
+            )}
           </div>
         </div>
       </header>
