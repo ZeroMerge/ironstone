@@ -1,0 +1,38 @@
+services:
+  # 1. Backend Web Service (Node + Puppeteer Headless PDF Engine)
+  - type: web
+    name: ironstone-backend
+    runtime: node
+    plan: starter
+    rootDir: server
+    buildCommand: npm install && npx puppeteer browsers install chrome
+    startCommand: node src/index.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_BASE_URL
+        sync: false # e.g. https://yourdomain.com
+      - key: EXPORT_TOKEN_SECRET
+        generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: Ironstone <export@resend.dev>
+
+  # 2. Frontend Static Site
+  - type: web
+    name: ironstone-frontend
+    runtime: static
+    rootDir: web
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: ironstone-backend
+          property: host
