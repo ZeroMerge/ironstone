@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
-if (import.meta.env.DEV) {
+if ((import.meta as any).env?.DEV) {
   window.addEventListener("error", function (e) {
     fetch("http://localhost:4100/api/log", {
       method: "POST",

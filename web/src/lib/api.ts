@@ -1,6 +1,6 @@
 import type { ExportPayload } from './types';
 
-const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API_BASE = (((import.meta as any).env?.VITE_API_URL as string) || '').replace(/\/$/, '');
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;

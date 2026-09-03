@@ -2079,10 +2079,11 @@ export default function Editor() {
         if (status.status === 'done') {
           if (status.downloadUrl) {
             const a = document.createElement('a');
-            const apiBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+            const meta = (import.meta as any).env;
+            const apiBase = ((meta?.VITE_API_URL as string) || '').replace(/\/$/, '');
             a.href = status.downloadUrl.startsWith('http')
               ? status.downloadUrl
-              : `${apiBase || (import.meta.env.DEV ? 'http://localhost:4100' : '')}${status.downloadUrl}`;
+              : `${apiBase || (meta?.DEV ? 'http://localhost:4100' : '')}${status.downloadUrl}`;
             const safeName = (exportFileName.trim() || project?.name || 'moodboard').replace(/[^a-zA-Z0-9_-]/g, '_');
             a.download = `${safeName}.pdf`;
             a.style.display = 'none';
