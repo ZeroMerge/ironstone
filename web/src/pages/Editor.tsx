@@ -2041,6 +2041,17 @@ export default function Editor() {
         }
       }
 
+      // Only convert images that are actually placed on targetPages (drastically reduces upload size)
+      const usedImageIds = new Set<string>();
+      targetPages.forEach(p => {
+        p.blocks.forEach(b => {
+          if ((b.type === 'image' || b.type === 'card') && b.content) {
+            usedImageIds.add(b.content);
+          }
+        });
+      });
+      const neededImages = allImages.filter(img => usedImageIds.has(img.id));
+
       const payload: ExportPayload = {
         project: {
           ...project,
@@ -2048,7 +2059,7 @@ export default function Editor() {
         },
         pages: targetPages,
         images: await Promise.all(
-          allImages.map(async (img) => ({
+          neededImages.map(async (img) => ({
             id: img.id,
             dataUrl: await blobToDataUrl(img.blob),
           }))

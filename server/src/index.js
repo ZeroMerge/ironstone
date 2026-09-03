@@ -3,7 +3,7 @@ import cors from 'cors';
 import { config, configWarnings } from './config.js';
 import { exportRouter } from './routes/export.js';
 import { pinterestRouter } from './routes/pinterest.js';
-import { closeBrowser } from './render.js';
+import { closeBrowser, warmBrowser } from './render.js';
 
 const app = express();
 
@@ -11,7 +11,10 @@ app.disable('x-powered-by');
 app.use(cors({ origin: true, credentials: false }));
 app.use(express.json({ limit: '40mb' }));
 
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'ironstone-server' }));
+app.get('/health', (_req, res) => {
+  warmBrowser();
+  res.json({ ok: true, service: 'ironstone-server' });
+});
 
 app.use(exportRouter);
 app.use(pinterestRouter);
@@ -29,6 +32,7 @@ app.use((err, _req, res, _next) => {
 const server = app.listen(config.port, () => {
   console.log(`[ironstone] backend listening on http://localhost:${config.port}`);
   for (const w of configWarnings()) console.warn(`[ironstone] warning: ${w}`);
+  warmBrowser();
 });
 
 async function shutdown() {

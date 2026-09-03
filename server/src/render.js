@@ -16,17 +16,35 @@ function getBrowser() {
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+        '--disable-extensions',
+        '--disable-default-apps',
+        '--mute-audio',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-breakpad',
+        '--disable-sync',
+        '--disable-translate',
       ],
     };
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
     }
     browserPromise = puppeteer.launch(launchOptions);
-    browserPromise.catch(() => {
+    browserPromise.catch((err) => {
+      console.error('[ironstone] Failed to launch Chromium:', err);
       browserPromise = null; // allow retry on next job
     });
   }
   return browserPromise;
+}
+
+/** Pre-warms the Chromium process in the background so export jobs don't wait for browser boot. */
+export function warmBrowser() {
+  getBrowser().catch(() => {});
 }
 
 /**

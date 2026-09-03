@@ -56,12 +56,21 @@ export default function ExportRender() {
         }
       }
 
-      // 2. Wait for all <img> tags to complete
+      // 2. Wait for all <img> tags to complete (using fast native decode())
       const imgs = Array.from(document.querySelectorAll<HTMLImageElement>('[data-print-block] img'));
       if (imgs.length > 0) {
         await Promise.all(
-          imgs.map((img) => {
-            if (img.complete) return Promise.resolve();
+          imgs.map(async (img) => {
+            if (img.complete && img.naturalWidth > 0) return;
+            if ('decode' in img) {
+              try {
+                await img.decode();
+                return;
+              } catch {
+                /* fallback */
+              }
+            }
+            if (img.complete) return;
             return new Promise<void>((resolve) => {
               img.addEventListener('load', () => resolve(), { once: true });
               img.addEventListener('error', () => resolve(), { once: true });
@@ -71,7 +80,7 @@ export default function ExportRender() {
       }
 
       // Micro stabilization delay for layout reflow
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, 60));
 
       if (!cancelled) {
         setReady(true);
