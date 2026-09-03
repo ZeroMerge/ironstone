@@ -3,21 +3,21 @@ services:
   - type: web
     name: ironstone-backend
     runtime: node
-    plan: starter
+    plan: free
     rootDir: server
     buildCommand: npm install && npx puppeteer browsers install chrome
     startCommand: node src/index.js
     envVars:
-      - key: PORT
-        value: 10000
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/.cache/puppeteer
       - key: FRONTEND_BASE_URL
-        sync: false # e.g. https://yourdomain.com
+        sync: false # Set to your frontend URL, e.g. https://yourdomain.com
       - key: EXPORT_TOKEN_SECRET
         generateValue: true
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
-        value: Ironstone <export@resend.dev>
+        value: Ironstone <onboarding@resend.dev>
 
   # 2. Frontend Static Site
   - type: web
