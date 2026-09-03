@@ -1,9 +1,12 @@
 import type { ExportPayload } from './types';
 
+const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
   let res: Response;
   try {
-    res = await fetch(url, init);
+    res = await fetch(fullUrl, init);
   } catch (e) {
     throw new Error('Could not connect to the export server. Try again.');
   }
@@ -35,7 +38,7 @@ export function importPinterestBoard(boardUrl: string): Promise<{ pins: Pinteres
 
 /** Proxied through the backend so images can be stored without CORS issues. */
 export function pinterestImageProxyUrl(imageUrl: string): string {
-  return `/api/pinterest/image?url=${encodeURIComponent(imageUrl)}`;
+  return `${API_BASE}/api/pinterest/image?url=${encodeURIComponent(imageUrl)}`;
 }
 
 // ---------- Export ----------
