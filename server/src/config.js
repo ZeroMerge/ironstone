@@ -16,9 +16,17 @@ function readEnvFile() {
 }
 readEnvFile();
 
+function formatBaseUrl(raw) {
+  let val = (raw ?? 'http://localhost:5173').trim().replace(/\/$/, '');
+  if (val && !/^https?:\/\//i.test(val)) {
+    val = `https://${val}`;
+  }
+  return val;
+}
+
 export const config = {
   port: Number(process.env.PORT ?? 4100),
-  frontendBaseUrl: (process.env.FRONTEND_BASE_URL ?? 'http://localhost:5173').replace(/\/$/, ''),
+  frontendBaseUrl: formatBaseUrl(process.env.FRONTEND_BASE_URL),
   exportTokenSecret: process.env.EXPORT_TOKEN_SECRET ?? '',
   resendApiKey: process.env.RESEND_API_KEY ?? '',
   resendFrom: process.env.RESEND_FROM ?? 'Ironstone <onboarding@resend.dev>',

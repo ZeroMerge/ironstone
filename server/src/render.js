@@ -64,8 +64,8 @@ export async function renderPdf({ projectId, jobId, token, format = 'a4-landscap
       jobId,
     )}&token=${encodeURIComponent(token)}`;
 
-    await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
-    await page.waitForSelector('[data-render-ready="true"]', { timeout: 60000 });
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForSelector('[data-render-ready="true"]', { timeout: 30000 });
 
     const errorEl = await page.$('[data-render-error]');
     if (errorEl) {
