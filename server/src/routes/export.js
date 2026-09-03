@@ -91,6 +91,7 @@ async function processJob(job) {
       jobId: job.id,
       token,
       format: job.payload.format || 'a4-landscape',
+      payload: job.payload,
     });
     if (job.payload.email) {
       if (!emailEnabled()) {

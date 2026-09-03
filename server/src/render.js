@@ -34,10 +34,13 @@ function getBrowser() {
  * The route pulls the transient payload itself (signed token in the URL), so
  * the PDF always matches the editor's HTML/CSS exactly.
  */
-export async function renderPdf({ projectId, jobId, token, format = 'a4-landscape' }) {
+export async function renderPdf({ projectId, jobId, token, format = 'a4-landscape', payload }) {
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {
+    page.on('console', msg => console.log('[puppeteer page]', msg.text()));
+    page.on('pageerror', err => console.error('[puppeteer error]', err));
+
     const isScreen = format === 'screen-16-9';
     const isPortrait = format === 'a4-portrait';
     
@@ -50,12 +53,26 @@ export async function renderPdf({ projectId, jobId, token, format = 'a4-landscap
       await page.setViewport({ width: 1697, height: 1200, deviceScaleFactor: 2 });
     }
 
+    // Direct memory injection: avoids any cross-origin network fetch failure inside the headless browser
+    if (payload) {
+      await page.evaluateOnNewDocument((data) => {
+        window.__EXPORT_PAYLOAD__ = data;
+      }, payload);
+    }
+
     const url = `${config.frontendBaseUrl}/export-render/${projectId}?job=${encodeURIComponent(
       jobId,
     )}&token=${encodeURIComponent(token)}`;
 
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
     await page.waitForSelector('[data-render-ready="true"]', { timeout: 60000 });
+
+    const errorEl = await page.$('[data-render-error]');
+    if (errorEl) {
+      const errMsg = await page.evaluate(el => el.getAttribute('data-render-error'), errorEl);
+      throw new Error(`Client render error: ${errMsg}`);
+    }
+
     await page.emulateMediaType('print');
     
     const pdf = await page.pdf({

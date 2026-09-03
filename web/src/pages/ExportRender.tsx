@@ -23,14 +23,23 @@ export default function ExportRender() {
   const token = params.get('token') ?? '';
 
   useEffect(() => {
-    fetch(`/export/payload/${jobId}?token=${encodeURIComponent(token)}`)
+    // 1. Direct injection from Puppeteer (fastest, zero network roundtrip)
+    if ((window as any).__EXPORT_PAYLOAD__) {
+      setPayload((window as any).__EXPORT_PAYLOAD__);
+      return;
+    }
+
+    // 2. Fetch from backend URL (fallback)
+    const meta = (import.meta as any).env;
+    const apiBase = params.get('api') || ((meta?.VITE_API_URL as string) || '').replace(/\/$/, '');
+    fetch(`${apiBase}/export/payload/${jobId}?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`payload ${res.status}`);
         return (await res.json()) as ExportPayload;
       })
       .then(setPayload)
       .catch((e) => setError(String(e)));
-  }, [jobId, token]);
+  }, [jobId, token, params]);
 
   // Wait for all web fonts and images to load completely before signaling ready.
   useEffect(() => {
@@ -83,7 +92,11 @@ export default function ExportRender() {
   }, [payload]);
 
   if (error) {
-    return <p style={{ fontFamily: 'Manrope, sans-serif', padding: 40 }}>Export render failed: {error}</p>;
+    return (
+      <div data-render-ready="true" data-render-error={error} style={{ fontFamily: 'Manrope, sans-serif', padding: 40 }}>
+        Export render failed: {error}
+      </div>
+    );
   }
   if (!payload) {
     return <p style={{ fontFamily: 'Manrope, sans-serif', padding: 40 }}>Preparing document…</p>;
