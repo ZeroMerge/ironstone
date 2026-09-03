@@ -1,15 +1,12 @@
 services:
-  # Backend Web Service Only (Node + Puppeteer Headless PDF Engine)
+  # Backend Web Service (Node + Puppeteer Headless PDF Engine via Docker)
   - type: web
     name: ironstone-backend
-    runtime: node
+    runtime: docker
     plan: free
-    rootDir: server
-    buildCommand: npm install && npx puppeteer browsers install chrome
-    startCommand: node src/index.js
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
     envVars:
-      - key: PUPPETEER_CACHE_DIR
-        value: /opt/render/.cache/puppeteer
       - key: PORT
         value: 4100
       - key: FRONTEND_BASE_URL

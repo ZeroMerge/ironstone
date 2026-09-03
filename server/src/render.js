@@ -9,7 +9,7 @@ let browserPromise = null;
 
 function getBrowser() {
   if (!browserPromise) {
-    browserPromise = puppeteer.launch({
+    const launchOptions = {
       headless: true,
       args: [
         '--no-sandbox',
@@ -17,7 +17,11 @@ function getBrowser() {
         '--disable-dev-shm-usage',
         '--disable-gpu',
       ],
-    });
+    };
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+    }
+    browserPromise = puppeteer.launch(launchOptions);
     browserPromise.catch(() => {
       browserPromise = null; // allow retry on next job
     });
