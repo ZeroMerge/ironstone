@@ -1,5 +1,5 @@
 services:
-  # 1. Backend Web Service (Node + Puppeteer Headless PDF Engine)
+  # Backend Web Service Only (Node + Puppeteer Headless PDF Engine)
   - type: web
     name: ironstone-backend
     runtime: node
@@ -11,28 +11,10 @@ services:
       - key: PUPPETEER_CACHE_DIR
         value: /opt/render/.cache/puppeteer
       - key: FRONTEND_BASE_URL
-        sync: false # Set to your frontend URL, e.g. https://yourdomain.com
+        sync: false # Set to your Vercel / custom domain URL, e.g. https://yourdomain.com
       - key: EXPORT_TOKEN_SECRET
         generateValue: true
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
         value: Ironstone <onboarding@resend.dev>
-
-  # 2. Frontend Static Site
-  - type: web
-    name: ironstone-frontend
-    runtime: static
-    rootDir: web
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        fromService:
-          type: web
-          name: ironstone-backend
-          property: host
