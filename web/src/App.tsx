@@ -8,6 +8,7 @@ import Editor from './pages/Editor';
 import Export from './pages/Export';
 import Explore from './pages/Explore';
 import ExportRender from './pages/ExportRender';
+import Privacy from './pages/Privacy';
 import { installExtensionSync } from './lib/extensionSync';
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
           <Route path="/projects/:id/editor" element={<Editor />} />
           <Route path="/projects/:id/export" element={<Export />} />
           <Route path="/explore/:categoryId?/:collectionId?" element={<Explore />} />
+          <Route path="/privacy" element={<Privacy />} />
         </Routes>
       </main>
     </div>

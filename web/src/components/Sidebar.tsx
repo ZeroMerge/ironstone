@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMatch } from 'react-router-dom';
 import { NavLink } from 'react-router-dom';
 import { CATALOGUE } from '../lib/catalogue';
-import { Home, Folder, Palette, Camera, Briefcase, Megaphone, Calendar, Shapes, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Home, Folder, Palette, Camera, Briefcase, Megaphone, Calendar, Shapes, PanelLeftClose, PanelLeftOpen, ShieldCheck } from 'lucide-react';
 
 function IconWrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -95,17 +95,39 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Collapse Toggle */}
-      <div className={`hidden md:flex p-4 mt-auto ${collapsed ? 'justify-center' : 'justify-end'}`}>
-        <button
-          onClick={() => setManualState(!collapsed)}
-          className="p-2 text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      {/* Bottom Section: Privacy Policy & Collapse Toggle */}
+      <div className={`mt-auto border-t border-surface-muted/60 p-3 flex flex-col gap-1.5 ${collapsed ? 'items-center px-2' : 'px-3'}`}>
+        <NavLink
+          to="/privacy"
+          title="Privacy Policy"
+          className={({ isActive }) =>
+            `flex items-center gap-3 py-2 rounded-md text-xs font-medium transition-colors ${
+              isActive
+                ? 'bg-surface text-ink shadow-sm'
+                : 'text-text-muted hover:text-ink hover:bg-surface-active/50'
+            } ${collapsed ? 'px-2 md:px-0 md:justify-center' : 'px-2.5'}`
+          }
         >
           <IconWrapper>
-            {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
+            <ShieldCheck size={16} strokeWidth={1.5} />
           </IconWrapper>
-        </button>
+          <span className={`truncate ${collapsed ? 'md:hidden' : ''}`}>Privacy Policy</span>
+        </NavLink>
+
+        <div className={`hidden md:flex pt-1 items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
+          <span className={`text-[10px] text-text-muted/60 pl-2.5 font-medium ${collapsed ? 'hidden' : 'block'}`}>
+            © 2026 Raven North
+          </span>
+          <button
+            onClick={() => setManualState(!collapsed)}
+            className="p-1.5 text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <IconWrapper>
+              {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
+            </IconWrapper>
+          </button>
+        </div>
       </div>
     </aside>
   );
