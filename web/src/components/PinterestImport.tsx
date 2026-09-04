@@ -9,10 +9,23 @@ type Phase =
   | { kind: "error"; message: string }
   | { kind: "done"; added: number };
 
+function normalizeUrl(input: string): string {
+  let trimmed = input.trim();
+  if (trimmed && !/^https?:\/\//i.test(trimmed)) {
+    trimmed = 'https://' + trimmed;
+  }
+  return trimmed;
+}
+
 function isValidBoardUrl(url: string): boolean {
   try {
-    const u = new URL(url);
-    return /(^|\.)pinterest\./.test(u.hostname) && u.pathname.split("/").filter(Boolean).length >= 2;
+    const normalized = normalizeUrl(url);
+    const u = new URL(normalized);
+    const isPinIt = /(^|\.)pin\.it$/i.test(u.hostname);
+    const isPinterest = /(^|\.)pinterest\./i.test(u.hostname);
+    if (isPinIt && u.pathname.replace(/\/+$/, '').length > 1) return true;
+    if (isPinterest && u.pathname.split('/').filter(Boolean).length >= 1) return true;
+    return false;
   } catch {
     return false;
   }
@@ -32,21 +45,22 @@ export default function PinterestImport({
   const [progress, setProgress] = useState("");
 
   async function run() {
-    if (!isValidBoardUrl(url.trim())) {
-      setPhase({ kind: "error", message: "Please enter a valid Pinterest board URL" });
+    const normalized = normalizeUrl(url);
+    if (!isValidBoardUrl(normalized)) {
+      setPhase({ kind: "error", message: "Please enter a valid Pinterest board URL (e.g. pinterest.com/user/board or pin.it/...)" });
       return;
     }
     setPhase({ kind: "loading" });
-    setProgress("Fetching board…");
+    setProgress("Fetching board...");
     try {
-      const { pins } = await importPinterestBoard(url.trim());
+      const { pins } = await importPinterestBoard(normalized);
       if (pins.length === 0) {
         setPhase({ kind: "error", message: "This board has no images." });
         return;
       }
       let added = 0;
       for (const [i, pin] of pins.entries()) {
-        setProgress(`Saving image ${i + 1} of ${pins.length}…`);
+        setProgress(`Saving image ${i + 1} of ${pins.length}...`);
         try {
           if (existingImages.some(img => img.originalUrl === pin.imageUrl)) continue;
           const res = await fetch(pinterestImageProxyUrl(pin.imageUrl));
@@ -103,7 +117,7 @@ export default function PinterestImport({
         <div className="flex justify-end gap-2">
           <button className="btn-primary" onClick={run} disabled={phase.kind === "loading"}>
             {phase.kind === "loading"
-              ? "Importing…"
+              ? "Importing..."
               : phase.kind === "error"
                 ? "Try again"
                 : "Import"}

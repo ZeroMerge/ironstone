@@ -1,140 +1,171 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Folder, Image as ImageIcon, Plus, ArrowRight, Compass } from 'lucide-react';
-import { listProjects, countAllImages } from '../db/repo';
+import { Plus, ArrowRight, Sparkles, Compass } from 'lucide-react';
+import { listProjects } from '../db/repo';
 import type { Project } from '../lib/types';
+import ProjectCard from '../components/ProjectCard';
 import CreateProjectModal from '../components/CreateProjectModal';
+
+const POPULAR_STYLES = [
+  { name: 'Brutalism', path: '/explore/graphic-design/brutalism' },
+  { name: 'Swiss', path: '/explore/graphic-design/swiss' },
+  { name: 'Minimalism', path: '/explore/graphic-design/minimalism' },
+  { name: 'Editorial', path: '/explore/photography/editorial' },
+  { name: 'Product', path: '/explore/photography/product' },
+  { name: 'Y2K', path: '/explore/graphic-design/y2k' },
+];
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning.';
+  if (hour < 18) return 'Good afternoon.';
+  return 'Good evening.';
+}
 
 export default function Home() {
   const [projects, setProjects] = useState<Project[] | null>(null);
-  const [totalReferences, setTotalReferences] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
 
-  useEffect(() => {
+  function refreshProjects() {
     listProjects().then(setProjects);
-    countAllImages().then(setTotalReferences);
+  }
+
+  useEffect(() => {
+    refreshProjects();
   }, []);
 
+  const greeting = getGreeting();
+
   return (
-    <div className="w-full px-6 md:px-10 lg:px-12 py-8 md:py-10">
-      {/* Top-Left Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">Home</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          Create and curate visual moodboards for your creative projects.
-        </p>
+    <div className="w-full min-h-full px-6 md:px-12 lg:px-16 py-10 md:py-14 space-y-10 max-w-7xl mx-auto">
+      {/* Top Editorial Header */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-4">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-ink">
+            {greeting}
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            Curate references, extract color palettes, and compose high-resolution moodboards.
+          </p>
+        </div>
+
+        <button
+          onClick={() => setShowCreate(true)}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-ink text-white font-medium text-xs shadow-xs hover:bg-ink/90 active:scale-[0.98] transition-all shrink-0"
+        >
+          <Plus size={15} strokeWidth={2.2} />
+          <span>New Project</span>
+        </button>
       </div>
 
-      {/* Top Metrics / Status Strip (Inspired by Reference Image 4) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
-        <div className="card p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Total Projects</p>
-            <p className="text-2xl font-extrabold text-ink mt-1">
-              {projects === null ? '—' : projects.length}
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-surface-muted flex items-center justify-center text-text-muted shrink-0">
-            <Folder size={18} strokeWidth={1.5} />
-          </div>
-        </div>
+      {/* Main Section: Continue Working */}
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between gap-2.5">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted/80">
+            Continue Working
+          </h2>
 
-        <div className="card p-5 flex items-center justify-between">
-          <div>
-            <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Total References</p>
-            <p className="text-2xl font-extrabold text-ink mt-1">
-              {totalReferences}
-            </p>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-surface-muted flex items-center justify-center text-text-muted shrink-0">
-            <ImageIcon size={18} strokeWidth={1.5} />
-          </div>
-        </div>
-
-        <div className="card p-5 flex items-center justify-between sm:col-span-2 lg:col-span-1">
-          <div>
-            <p className="text-xs font-bold text-text-muted uppercase tracking-wider">Quick Action</p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="mt-1 text-sm font-bold text-accent hover:underline inline-flex items-center gap-1"
-            >
-              + Create new project
-            </button>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-accent-soft text-accent flex items-center justify-center shrink-0">
-            <Plus size={18} strokeWidth={1.5} />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-ink">Recent Projects</h2>
           {projects && projects.length > 0 && (
-            <Link to="/projects" className="text-xs font-bold text-accent hover:underline inline-flex items-center gap-1">
-              View all ({projects.length}) <ArrowRight size={14} strokeWidth={1.5} />
+            <Link
+              to="/projects"
+              className="text-xs font-semibold text-text-muted hover:text-ink transition-colors inline-flex items-center gap-1"
+            >
+              <span>View all ({projects.length})</span>
+              <ArrowRight size={13} strokeWidth={2} />
             </Link>
           )}
         </div>
 
         {projects === null ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2].map((i) => (
-              <div key={i} className="animate-pulse h-32 bg-surface rounded-lg" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="animate-pulse aspect-[1.12/1] bg-surface-muted/60 rounded-3xl" />
             ))}
           </div>
         ) : projects.length === 0 ? (
-          /* Empty State Container (Centered inside fixed page frame) */
-          <div className="card p-12 text-center flex flex-col items-center justify-center">
-            <div className="w-12 h-12 rounded-xl bg-surface-muted flex items-center justify-center text-text-muted mb-4">
-              <Folder size={22} strokeWidth={1.5} />
+          /* Tactile Empty State without 1px borders */
+          <div className="p-12 sm:p-16 rounded-3xl bg-[#FAF4EC] shadow-xs text-center flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-white shadow-xs flex items-center justify-center text-ink/70 mb-4">
+              <Sparkles size={20} strokeWidth={1.8} className="text-amber-600" />
             </div>
-            <h3 className="text-lg font-bold text-ink">No projects yet</h3>
-            <p className="text-sm text-text-muted max-w-sm mt-1 mb-6">
-              Start by creating your first project space to collect visual references and export moodboards.
+            <h3 className="text-lg font-bold text-ink tracking-tight">Your atelier is quiet</h3>
+            <p className="text-xs sm:text-sm text-text-muted max-w-sm mt-1 mb-6 leading-relaxed">
+              Create a project space to collect visual inspirations, import Pinterest boards, and render vector PDFs.
             </p>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <button className="btn-primary inline-flex items-center gap-2" onClick={() => setShowCreate(true)}>
-                <Plus size={16} strokeWidth={1.5} /> Create project
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCreate(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ink text-white font-medium text-xs shadow-xs hover:bg-ink/90 transition-all"
+              >
+                <Plus size={15} strokeWidth={2} />
+                <span>Create first project</span>
               </button>
-              <Link to="/explore/graphic-design" className="btn-secondary inline-flex items-center gap-2">
-                <Compass size={16} strokeWidth={1.5} /> Browse curated styles
+              <Link
+                to="/explore/graphic-design"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-ink font-medium text-xs hover:bg-surface-active/50 transition-all shadow-2xs"
+              >
+                <Compass size={15} strokeWidth={1.8} />
+                <span>Browse styles</span>
               </Link>
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-            {projects.map((p) => (
-              <Link
-                key={p.id}
-                to={`/projects/${p.id}`}
-                className="card p-5 hover:shadow-lift transition-shadow group flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[11px] font-bold text-text-muted/80 uppercase tracking-wider">
-                      {p.orientation}
-                    </span>
-                    <span className="text-xs text-text-faint">
-                      {new Date(p.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-ink truncate group-hover:text-accent transition-colors">
-                    {p.name}
-                  </h3>
-                </div>
-                <div className="mt-6 pt-3 border-t-[1.5px] border-surface-muted flex items-center justify-between text-xs text-text-muted">
-                  <span>Open collection</span>
-                  <ArrowRight size={14} strokeWidth={1.5} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </Link>
+          /* Project Cards Grid with reduced gap and NO 1px borders */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+            {/* Direct "+ New Project" Card for tactile access (Solid Whitish-Orange) */}
+            <div
+              onClick={() => setShowCreate(true)}
+              className="group aspect-[1.12/1] rounded-3xl p-6 bg-[#FAF4EC] hover:bg-[#F5ECE0] shadow-xs hover:shadow-xl flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-200"
+            >
+              <div className="w-11 h-11 rounded-2xl bg-white shadow-2xs flex items-center justify-center text-ink/70 group-hover:scale-110 group-hover:text-ink transition-all mb-3">
+                <Plus size={20} strokeWidth={2} />
+              </div>
+              <span className="text-sm font-semibold text-ink">New Project</span>
+              <span className="text-[11px] text-text-muted/70 mt-0.5">Start fresh canvas</span>
+            </div>
+
+            {projects.map((project, idx) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                index={idx}
+                onDeleted={refreshProjects}
+                onDuplicated={refreshProjects}
+                onUpdated={refreshProjects}
+              />
             ))}
           </div>
         )}
       </div>
 
-      {showCreate && <CreateProjectModal onClose={() => setShowCreate(false)} />}
+      {/* Explore by Style Section */}
+      <div className="space-y-4 pt-4 border-t border-black/[0.04]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-text-muted/80">
+            Explore by Style
+          </h2>
+          <Link
+            to="/explore/graphic-design"
+            className="text-xs font-semibold text-text-muted hover:text-ink transition-colors"
+          >
+            All Collections →
+          </Link>
+        </div>
+
+        <div className="flex flex-wrap gap-2.5">
+          {POPULAR_STYLES.map((style) => (
+            <Link
+              key={style.name}
+              to={style.path}
+              className="px-3.5 py-2 rounded-xl bg-white border border-black/[0.05] hover:border-black/15 shadow-2xs text-xs font-medium text-ink hover:text-accent transition-all"
+            >
+              {style.name}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {showCreate && <CreateProjectModal onClose={() => { setShowCreate(false); refreshProjects(); }} />}
     </div>
   );
 }

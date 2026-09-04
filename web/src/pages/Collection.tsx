@@ -14,7 +14,8 @@ import type { ImageRec, Project } from '../lib/types';
 import { normalizeImage, objectUrlFor } from '../lib/images';
 import { buildMoodboard } from '../lib/autofill';
 import Modal from '../components/Modal';
-import PinterestImport from '../components/PinterestImport';
+import PinterestPopover from '../components/PinterestPopover';
+import { Keycap, PinterestIcon } from '../components/Keycap';
 
 export default function Collection() {
   const { id = '' } = useParams();
@@ -174,9 +175,19 @@ export default function Collection() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="btn-secondary" onClick={() => setShowPinterest(true)}>
-            Import Pinterest
-          </button>
+          {images.length > 0 && (
+            <div className="relative group hidden md:inline-flex items-center">
+              <div className="flex items-center gap-1 bg-black/[0.04] hover:bg-black/[0.08] px-2 py-1.5 rounded-lg transition-colors cursor-default select-none">
+                <Keycap label="⌘" className="h-4 min-w-[18px] text-[9px]" />
+                <Keycap label="V" className="h-4 min-w-[18px] text-[9px]" />
+              </div>
+              {/* Customized Tooltip on Hover */}
+              <div className="absolute top-full right-0 mt-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-150 transform translate-y-1 group-hover:translate-y-0 z-50 whitespace-nowrap bg-ink text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-lg">
+                Press ⌘V anywhere to paste images
+              </div>
+            </div>
+          )}
+          <PinterestPopover projectId={id} existingImages={images} onImported={refresh} />
           <button className="btn-secondary" onClick={() => fileInput.current?.click()}>
             Upload
           </button>
@@ -228,73 +239,94 @@ export default function Collection() {
       {loading ? (
         <div className="animate-pulse h-64 bg-surface rounded-lg" />
       ) : images.length === 0 ? (
-        /* Empty State with 3-Action Quick Start Cards (Inspired by Reference Image 3 & 4) */
-        <div className="space-y-8">
-          <div className="card p-12 text-center flex flex-col items-center justify-center">
-            <div className="w-12 h-12 rounded-xl bg-surface-muted flex items-center justify-center text-text-muted mb-4">
-              <Camera size={22} strokeWidth={1.5} />
-            </div>
-            <h2 className="text-lg font-bold text-ink">No references collected yet</h2>
-            <p className="mt-1 text-sm text-text-muted max-w-md mb-8">
-              Collect images to compose your moodboard. You can import from Pinterest, upload files, or browse curated styles.
+        /* Tactile Apple/Craft 3-Card Empty State */
+        <div className="py-12 flex flex-col items-center justify-center max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-1.5">
+            <h2 className="text-2xl font-bold text-ink tracking-tight">No references yet</h2>
+            <p className="text-sm text-text-muted">
+              Add visual references to compose your moodboard.
             </p>
+          </div>
 
-            {/* 3 Quick Action Cards Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl text-left">
-              <button
-                onClick={() => setShowPinterest(true)}
-                className="card p-5 hover:shadow-lift transition-all group border-[1.5px] border-surface-muted flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-8 h-8 rounded-lg bg-surface-muted flex items-center justify-center text-text-muted mb-3 group-hover:bg-accent-soft group-hover:text-accent transition-colors">
-                    <Sparkles size={16} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="font-bold text-sm text-ink group-hover:text-accent transition-colors">
-                    Import Pinterest Board
-                  </h3>
-                  <p className="text-xs text-text-muted mt-1">
-                    Paste any public Pinterest board URL to extract high-res pins.
-                  </p>
-                </div>
-                <span className="mt-4 text-xs font-bold text-accent">Import →</span>
-              </button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+            {/* Card 1: Paste or upload files with 3D Keycaps (Solid Whitish-Orange) */}
+            <div
+              onClick={() => fileInput.current?.click()}
+              className="group relative aspect-[1.15/1] rounded-3xl p-6 bg-[#FAF4EC] hover:bg-[#F5ECE0] shadow-xs hover:shadow-xl transition-all duration-300 ease-out cursor-pointer flex flex-col justify-between"
+            >
+              {/* Top: 3D Keycaps */}
+              <div className="relative z-10 flex items-center gap-1.5">
+                <Keycap label="⌘" className="h-8 min-w-[32px] text-sm" />
+                <Keycap label="V" className="h-8 min-w-[32px] text-sm" />
+              </div>
 
-              <button
-                onClick={() => fileInput.current?.click()}
-                className="card p-5 hover:shadow-lift transition-all group border-[1.5px] border-surface-muted flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-8 h-8 rounded-lg bg-surface-muted flex items-center justify-center text-text-muted mb-3 group-hover:bg-accent-soft group-hover:text-accent transition-colors">
-                    <Upload size={16} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="font-bold text-sm text-ink group-hover:text-accent transition-colors">
-                    Upload from Computer
-                  </h3>
-                  <p className="text-xs text-text-muted mt-1">
-                    Select JPG, PNG, or WebP files or drag & drop anywhere on page.
-                  </p>
-                </div>
-                <span className="mt-4 text-xs font-bold text-accent">Choose files →</span>
-              </button>
-
-              <Link
-                to="/explore/graphic-design"
-                className="card p-5 hover:shadow-lift transition-all group border-[1.5px] border-surface-muted flex flex-col justify-between"
-              >
-                <div>
-                  <div className="w-8 h-8 rounded-lg bg-surface-muted flex items-center justify-center text-text-muted mb-3 group-hover:bg-accent-soft group-hover:text-accent transition-colors">
-                    <Compass size={16} strokeWidth={1.5} />
-                  </div>
-                  <h3 className="font-bold text-sm text-ink group-hover:text-accent transition-colors">
-                    Explore Curated Styles
-                  </h3>
-                  <p className="text-xs text-text-muted mt-1">
-                    Browse studio reference collections and save them straight to this board.
-                  </p>
-                </div>
-                <span className="mt-4 text-xs font-bold text-accent">Browse →</span>
-              </Link>
+              {/* Grounded & High-Contrast Bottom Content */}
+              <div className="relative z-10 space-y-1 pt-4">
+                <h3 className="text-base sm:text-lg font-extrabold text-ink tracking-tight leading-snug">
+                  Paste or upload files
+                </h3>
+                <p className="text-xs font-semibold text-ink/75 leading-relaxed">
+                  Drop images here or press ⌘V anywhere
+                </p>
+                <span className="text-[11px] font-bold text-ink/80 pt-1 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Select from device</span>
+                  <span>→</span>
+                </span>
+              </div>
             </div>
+
+            {/* Card 2: Pinterest Popover with Authentic Logo (Solid Clean Grey) */}
+            <div className="group relative z-20 aspect-[1.15/1] rounded-3xl p-6 bg-[#F2F2F0] hover:bg-[#EAEAE8] shadow-xs hover:shadow-xl transition-all duration-300 ease-out flex flex-col justify-between">
+              {/* Top: Pinterest Icon */}
+              <div className="relative z-10 w-9 h-9 rounded-xl bg-white shadow-2xs flex items-center justify-center text-[#E60023]">
+                <PinterestIcon size={20} />
+              </div>
+
+              {/* Grounded & High-Contrast Bottom Content */}
+              <div className="relative z-10 space-y-2 pt-4">
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-ink tracking-tight leading-snug">
+                    Pinterest
+                  </h3>
+                  <p className="text-xs font-semibold text-ink/75 mt-0.5 leading-relaxed">
+                    Import pins directly from your boards
+                  </p>
+                </div>
+                <PinterestPopover
+                  projectId={id}
+                  existingImages={images}
+                  onImported={refresh}
+                  align="center"
+                  className="w-full block"
+                  triggerClassName="inline-flex items-center justify-center gap-2 w-full py-2 px-3 rounded-xl bg-white/90 hover:bg-white text-xs font-bold text-ink shadow-xs transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Card 3: Curated Styles with Sparkle (Solid Whitish-Orange) */}
+            <Link
+              to="/explore/graphic-design"
+              className="group relative aspect-[1.15/1] rounded-3xl p-6 bg-[#FAF4EC] hover:bg-[#F5ECE0] shadow-xs hover:shadow-xl transition-all duration-300 ease-out flex flex-col justify-between"
+            >
+              {/* Top: Sparkle Icon */}
+              <div className="relative z-10 w-9 h-9 rounded-xl bg-white shadow-2xs flex items-center justify-center text-amber-600">
+                <Sparkles size={18} strokeWidth={1.8} />
+              </div>
+
+              {/* Grounded & High-Contrast Bottom Content */}
+              <div className="relative z-10 space-y-1 pt-4">
+                <h3 className="text-base sm:text-lg font-extrabold text-ink tracking-tight leading-snug">
+                  Curated Styles
+                </h3>
+                <p className="text-xs font-semibold text-ink/75 leading-relaxed">
+                  Browse studio reference collections
+                </p>
+                <span className="text-[11px] font-bold text-ink/80 pt-1 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span>Explore catalogue</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </Link>
           </div>
         </div>
       ) : (
@@ -334,18 +366,9 @@ export default function Collection() {
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-md bg-ink text-bg px-4 py-2 text-sm font-semibold shadow-pop z-50">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-ink/90 text-white text-xs font-medium backdrop-blur-md shadow-lg animate-in fade-in slide-in-from-bottom-3 duration-200">
           {toast}
         </div>
-      )}
-
-      {showPinterest && (
-        <PinterestImport
-          projectId={id}
-          existingImages={images}
-          onClose={() => setShowPinterest(false)}
-          onImported={refresh}
-        />
       )}
     </div>
   );

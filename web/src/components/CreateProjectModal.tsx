@@ -4,6 +4,11 @@ import Modal from './Modal';
 import { createProject } from '../db/repo';
 import type { Orientation } from '../lib/types';
 
+const ORIENTATIONS: { id: Orientation; label: string; sub: string; w: string; h: string }[] = [
+  { id: 'landscape', label: 'Landscape', sub: 'A4 · Horizontal', w: 'w-10', h: 'h-7' },
+  { id: 'portrait', label: 'Portrait', sub: 'A4 · Vertical', w: 'w-7', h: 'h-10' },
+];
+
 export default function CreateProjectModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [orientation, setOrientation] = useState<Orientation>('landscape');
@@ -13,7 +18,10 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) { setError('Please provide a project name.'); return; }
+    if (!name.trim()) {
+      setError('Please provide a project name.');
+      return;
+    }
     if (busy) return;
     setBusy(true);
     const project = await createProject(name.trim(), orientation);
@@ -24,30 +32,33 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
     <Modal title="New project" onClose={onClose}>
       <form onSubmit={submit} className="space-y-5">
         <div>
-          <label className="label" htmlFor="project-name">
+          <label className="text-xs font-semibold text-text-muted block mb-1.5" htmlFor="project-name">
             Project name
           </label>
           <input
             id="project-name"
-            className="input"
-            placeholder="e.g. Acme rebrand"
+            className="w-full bg-[#F5F5F3] focus:bg-white text-ink text-sm rounded-lg px-3.5 py-2.5 outline-none transition-colors placeholder:text-text-muted/50"
+            placeholder="e.g. Milan Autumn Editorial"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
           />
         </div>
+
         <div>
-          <span className="label">Orientation</span>
-          <div className="grid grid-cols-2 gap-2">
+          <span className="text-xs font-semibold text-text-muted block mb-1.5">
+            Orientation
+          </span>
+          <div className="grid grid-cols-2 gap-2 bg-[#F5F5F3] p-1 rounded-lg">
             {(['landscape', 'portrait'] as const).map((o) => (
               <button
                 key={o}
                 type="button"
                 onClick={() => setOrientation(o)}
-                className={`rounded-md px-3 py-2.5 text-sm font-semibold capitalize transition-colors ${
+                className={`rounded-md py-2 text-xs font-semibold capitalize transition-all ${
                   orientation === o
-                    ? 'bg-ink text-bg'
-                    : 'bg-surface-muted text-text-muted hover:text-ink'
+                    ? 'bg-white text-ink shadow-xs'
+                    : 'text-text-muted hover:text-ink'
                 }`}
               >
                 {o}
@@ -55,17 +66,18 @@ export default function CreateProjectModal({ onClose }: { onClose: () => void })
             ))}
           </div>
         </div>
-        {error && <p className="text-sm text-danger font-semibold">{error}</p>}
+
+        {error && <p className="text-xs text-red-600 font-semibold">{error}</p>}
+
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" className="btn-ghost" onClick={onClose}>
+          <button type="button" className="btn-ghost text-xs py-2 px-3" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary" disabled={busy}>
-            Create project
+          <button type="submit" className="btn-primary text-xs py-2 px-4" disabled={busy}>
+            {busy ? 'Creating…' : 'Create Project'}
           </button>
         </div>
       </form>
     </Modal>
   );
 }
-

@@ -38,6 +38,38 @@ export async function deleteProject(id: string): Promise<void> {
   await tx.done;
 }
 
+export async function duplicateProject(id: string): Promise<Project> {
+  const p = await getProject(id);
+  if (!p) throw new Error('Project not found');
+  const newP = await createProject(`${p.name} (Copy)`, p.orientation);
+  if (p.palette) newP.palette = [...p.palette];
+  if (p.styles) newP.styles = { ...p.styles };
+  await updateProject(newP);
+
+  const images = await listProjectImages(id);
+  for (const img of images) {
+    await putImage({
+      projectId: newP.id,
+      styleGroupId: null,
+      blob: img.blob,
+      source: img.source,
+      originalUrl: img.originalUrl,
+    });
+  }
+
+  const pages = await listPages(id);
+  for (const page of pages) {
+    await putPage({
+      id: uid(),
+      projectId: newP.id,
+      order: page.order,
+      blocks: JSON.parse(JSON.stringify(page.blocks)),
+    });
+  }
+
+  return newP;
+}
+
 // ---------- Images ----------
 
 export async function listProjectImages(projectId: string): Promise<ImageRec[]> {
