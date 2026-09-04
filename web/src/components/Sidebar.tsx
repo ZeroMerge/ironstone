@@ -95,8 +95,8 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom Section: Privacy Policy & Collapse Toggle */}
-      <div className={`mt-auto pb-4 pt-2 flex flex-col gap-1 ${collapsed ? 'px-4 md:px-3' : 'px-4'}`}>
+      {/* Bottom Section: Privacy & Collapse Toggle */}
+      <div className={`mt-auto pb-4 pt-2 ${collapsed ? 'px-3 flex flex-col items-center gap-2' : 'px-4 flex items-center justify-between gap-1'}`}>
         <NavLink
           to="/privacy"
           title="Privacy"
@@ -105,26 +105,26 @@ export default function Sidebar() {
               isActive
                 ? 'bg-surface text-ink shadow-sm'
                 : 'text-text-muted hover:text-ink hover:bg-surface-active/50'
-            } ${collapsed ? 'px-3 md:px-0 md:justify-center' : 'px-3'}`
+            } ${collapsed ? 'w-10 h-10 justify-center p-0' : 'flex-1 px-3'}`
           }
         >
           <IconWrapper>
             <ShieldCheck size={16} strokeWidth={1.5} />
           </IconWrapper>
-          <span className={`truncate ${collapsed ? 'md:hidden' : ''}`}>Privacy</span>
+          {!collapsed && <span className="truncate">Privacy</span>}
         </NavLink>
 
-        <div className={`hidden md:flex pt-2 items-center ${collapsed ? 'justify-center' : 'justify-end'}`}>
-          <button
-            onClick={() => setManualState(!collapsed)}
-            className="p-2 text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors"
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            <IconWrapper>
-              {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
-            </IconWrapper>
-          </button>
-        </div>
+        <button
+          onClick={() => setManualState(!collapsed)}
+          className={`text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors hidden md:flex items-center justify-center ${
+            collapsed ? 'w-10 h-10 p-0' : 'p-2 shrink-0'
+          }`}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <IconWrapper>
+            {collapsed ? <PanelLeftOpen size={16} strokeWidth={1.5} /> : <PanelLeftClose size={16} strokeWidth={1.5} />}
+          </IconWrapper>
+        </button>
       </div>
     </aside>
   );
