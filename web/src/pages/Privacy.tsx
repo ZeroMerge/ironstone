@@ -24,7 +24,7 @@ export default function Privacy() {
             Last updated: September 4, 2026
           </p>
           <div className="mt-6 text-sm text-text-muted leading-relaxed space-y-2">
-            <p>Ironstone is a moodboard tool made by Raven North Studio.</p>
+            <p>Ironstone is a local-first moodboard tool made by Raven North Studio. We do not store any of your projects, moodboards, or images in the cloud.</p>
             <p>This page explains what information Ironstone uses and how we protect it.</p>
           </div>
         </header>
@@ -89,16 +89,16 @@ export default function Privacy() {
 
           <section className="space-y-3">
             <h2 className="text-base font-semibold text-ink">
-              4. Where your projects are stored
+              4. Where your projects are stored (Local-First)
             </h2>
             <p className="text-text-muted">
-              Ironstone is built to keep your projects on your device.
+              Ironstone is local-first. We do not store your projects, visual assets, or data in the cloud.
             </p>
             <p className="text-text-muted">
-              Your projects and images can be stored in your browser using local storage.
+              Your projects and images are stored directly on your device using your browser&apos;s local storage.
             </p>
             <p className="text-text-muted">
-              This means Ironstone does not need a central database to keep your projects.
+              This means Ironstone does not need a central database or cloud servers to keep your projects. Your creative work remains private to your machine.
             </p>
             <p className="text-text-muted">
               If you clear your browser&apos;s stored data, your local Ironstone projects may be deleted.
@@ -113,7 +113,7 @@ export default function Privacy() {
               Some features, such as creating a PDF or sending an export by email, may need our servers.
             </p>
             <p className="text-text-muted">
-              When this happens, we send the information needed to complete that task.
+              When this happens, we send only the information needed to complete that task. This processing is temporary and in-memory; we do not store your project files or images in the cloud.
             </p>
             <p className="text-text-muted">
               We do not use your project information to show you ads or build an advertising profile.
