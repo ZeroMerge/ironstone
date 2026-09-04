@@ -96,31 +96,28 @@ export default function Sidebar() {
       </div>
 
       {/* Bottom Section: Privacy Policy & Collapse Toggle */}
-      <div className={`mt-auto border-t border-surface-muted/60 p-3 flex flex-col gap-1.5 ${collapsed ? 'items-center px-2' : 'px-3'}`}>
+      <div className={`mt-auto pb-4 pt-2 flex flex-col gap-1 ${collapsed ? 'px-4 md:px-3' : 'px-4'}`}>
         <NavLink
           to="/privacy"
-          title="Privacy Policy"
+          title="Privacy"
           className={({ isActive }) =>
-            `flex items-center gap-3 py-2 rounded-md text-xs font-medium transition-colors ${
+            `flex items-center gap-3 py-2 rounded-md text-sm font-medium transition-colors ${
               isActive
                 ? 'bg-surface text-ink shadow-sm'
                 : 'text-text-muted hover:text-ink hover:bg-surface-active/50'
-            } ${collapsed ? 'px-2 md:px-0 md:justify-center' : 'px-2.5'}`
+            } ${collapsed ? 'px-3 md:px-0 md:justify-center' : 'px-3'}`
           }
         >
           <IconWrapper>
             <ShieldCheck size={16} strokeWidth={1.5} />
           </IconWrapper>
-          <span className={`truncate ${collapsed ? 'md:hidden' : ''}`}>Privacy Policy</span>
+          <span className={`truncate ${collapsed ? 'md:hidden' : ''}`}>Privacy</span>
         </NavLink>
 
-        <div className={`hidden md:flex pt-1 items-center ${collapsed ? 'justify-center' : 'justify-between'}`}>
-          <span className={`text-[10px] text-text-muted/60 pl-2.5 font-medium ${collapsed ? 'hidden' : 'block'}`}>
-            © 2026 Raven North
-          </span>
+        <div className={`hidden md:flex pt-2 items-center ${collapsed ? 'justify-center' : 'justify-end'}`}>
           <button
             onClick={() => setManualState(!collapsed)}
-            className="p-1.5 text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors"
+            className="p-2 text-text-muted hover:text-ink hover:bg-surface-active/50 rounded-md transition-colors"
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <IconWrapper>
